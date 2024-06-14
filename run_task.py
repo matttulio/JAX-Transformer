@@ -160,7 +160,7 @@ for r in range(n_runs):
         val_epoch_metrics.insert(0, first_val_loss)
         val_epoch_metrics.insert(0, first_val_acc)
 
-        results.append({
+        reparameterized_transformers.append({
           'model_type': model_type,
             'train_losses': [float(metrics['loss']) for metrics in train_epoch_metrics if 'loss' in metrics],
             'val_losses': [float(metrics['loss']) for metrics in val_epoch_metrics if 'loss' in metrics],
