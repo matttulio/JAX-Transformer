@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=NHT
+#SBATCH --job-name=PNLPNTP_cw10_dp1.1
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=mgallo@sissa.it
 #SBATCH --nodes=1
