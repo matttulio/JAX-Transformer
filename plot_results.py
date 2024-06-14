@@ -96,14 +96,13 @@ results.train_losses = results.train_losses.apply(ast.literal_eval)
 results.val_losses = results.val_losses.apply(ast.literal_eval)
 results.val_acc = results.val_acc.apply(ast.literal_eval)
 
-
 for model_type, g in results.groupby('model_type'):
     acc = []
-    for i,row in g.iterrows():
-        plt.plot(row['val_acc'],c='orange')
+    for i, row in g.iterrows():
+        plt.plot(row['val_acc'])
         acc.append(row['val_acc'][-1])
     print(model_type, np.mean(acc), np.std(acc))
-    plt.plot([],[],c='orange',label='validation')
+    #plt.plot([],[],c='orange',label='validation')
     plt.xlabel('epochs')
     plt.ylabel('accuracy')
     plt.legend()
