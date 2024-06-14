@@ -61,7 +61,7 @@ seed = 42
 generator = torch.Generator().manual_seed(seed)
 
 
-train_ratio, val_ratio = 0.1, 0.05
+train_ratio, val_ratio = 0.7, 0.3
 
 train_size = int(train_ratio * len(dataset))
 val_size = len(dataset) - train_size
@@ -78,10 +78,10 @@ val_dataset = [convert_batch_to_jax(batch) for batch in val_dataloader]
 hidden_dimension_fc = 128
 model_dim = 64
 batch_size = 32
-n_runs = 2
+n_runs = 5
 #model_types = ['only_pos', 'only_sem']
 model_types = ['only_sem', 'only_pos']
-n_epochs = 20
+n_epochs = 200
 
 results = []
 dummy_input = np.ones(shape=(batch_size, seq_len), dtype=np.int8)
@@ -127,7 +127,7 @@ for model_type in model_types:
 pd.DataFrame(results).to_csv(os.path.join(save_dir, 'frozen_transformer_result.csv'), index=False)
 
 
-n_epochs = 1
+n_epochs = n_epochs // 2
 learning_rate = 1e-4
 reparameterized_transformers = []
 
