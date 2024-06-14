@@ -103,7 +103,7 @@ for model_type, g in results.groupby('model_type'):
         plt.plot(row['val_acc'], c='orange')
         acc.append(row['val_acc'][-1])
     print(model_type, np.mean(acc), np.std(acc))
-    plt.plot([],[],c='orange',label='validation')
+    plt.plot([], [], c='orange', label='validation')
     plt.xlabel('epochs')
     plt.ylabel('accuracy')
     plt.legend()
