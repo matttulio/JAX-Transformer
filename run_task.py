@@ -17,8 +17,8 @@ import os
 import cloudpickle
 import pickle
 
-task = 1  # Load primitive NLP dataset
-#task = 2  # Load NextHistogramTask dataset
+#task = 1  # Load primitive NLP dataset
+task = 2  # Load NextHistogramTask dataset
 #task = 3  # Load primitive NLP NTP dataset
 
 data_path = 'Datasets/Data'
@@ -26,7 +26,7 @@ data_path = 'Datasets/Data'
 if(task == 1):
     print("PRIMITIVE NLP TASK \n")
     file_name = 'primitive_NLP_dataset_n_smpl50000__seq_len10__cont_win3__'\
-        'v_size78__emb_dim50__emb_typeglove.6B.50d__seed42__d_par2'
+        'v_size78__emb_dim50__emb_typeglove.6B.50d__seed42__d_par1.1'
     file_ext = '.pkl'
     save_dir = os.path.join('Empirics', file_name)
 elif(task == 2):
@@ -36,8 +36,8 @@ elif(task == 2):
     save_dir = os.path.join('Empirics', file_name)
 elif(task == 3):
     print("PPRIMITIVE NLP NTP TASK \n")
-    file_name = 'primitive_NLP_NTP_dataset_n_smpl50000__seq_len10__cont_win10__'\
-    'v_size78__emb_dim50__emb_typeglove.6B.50d__seed42__d_par2'
+    file_name = 'primitive_NLP_NTP_dataset_n_smpl50000__seq_len10__cont_win3__'\
+    'v_size78__emb_dim50__emb_typeglove.6B.50d__seed42__d_par1.1'
     file_ext = '.pkl'
     save_dir = os.path.join('Empirics', file_name)
 
