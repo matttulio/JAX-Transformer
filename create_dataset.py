@@ -43,7 +43,7 @@ elif(desire == 2):
 
     num_samples = 50000
     sequence_length = 10
-    context_window = 3
+    context_window = 10
     vocab_size = round(sequence_length * 7.8125)
     vocab = list(range(vocab_size))
     embedding_dim = 50
