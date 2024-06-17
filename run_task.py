@@ -16,30 +16,155 @@ from src.benchmarks import *
 import os
 import cloudpickle
 import pickle
+import argparse
 
-#task = 1  # Load primitive NLP dataset
-task = 2  # Load NextHistogramTask dataset
-#task = 3  # Load primitive NLP NTP dataset
+# Determine environment (e.g., SSH or local)
+running_on_cluster = 'SLURM_JOB_ID' in os.environ
+
+if running_on_cluster:
+
+    print("Running on remote cluster")
+
+    parser = argparse.ArgumentParser(description='Run task with various parameters.')
+    parser.add_argument('--task', type=int, required=True, help='Task number')
+    args, remaining_args = parser.parse_known_args()
+    task = args.task
+else:
+
+    print("Running locally")
+
+    task = 1  # Load primitive NLP NTP dataset
+    #task = 2  # Load primitive NLP dataset
+    #task = 3  # Load NextHistogramTask dataset
+
 
 data_path = 'Datasets/Data'
 
 if(task == 1):
-    print("PRIMITIVE NLP TASK \n")
-    file_name = 'primitive_NLP_dataset_n_smpl50000__seq_len10__cont_win10__'\
-        'v_size78__emb_dim50__emb_typeglove.6B.50d__seed42__d_par1.1'
+
+    print("PRIMITIVE NLP NTP TASK \n")
+
+    if running_on_cluster:
+        parser.add_argument('--num_samples', type=int, required=True, help='Number of samples')
+        parser.add_argument('--sequence_length', type=int, required=True, help='Sequence length')
+        parser.add_argument('--context_window', type=int, required=True, help='Context window')
+        parser.add_argument('--vocab_size', type=int, required=True, help='Vocabulary size')
+        parser.add_argument('--embedding_dim', type=int, required=True, help='Embedding dimension')
+        parser.add_argument('--embedding_model', type=str, required=True, help='Embedding model')
+        parser.add_argument('--seed', type=int, required=True, help='Seed value')
+        parser.add_argument('--distr_param', type=int, required=True, help='Distribution parameter')
+        args = parser.parse_args()
+
+        num_samples = args.num_samples
+        sequence_length = args.sequence_length
+        context_window = args.context_window
+        vocab_size = args.vocab_size
+        embedding_dim = args.embedding_dim
+        embedding_path = 'Datasets/glove/glove.6B.50d.txt'
+        embedding_model = args.embedding_model
+        seed = args.seed
+        distr_param = args.distr_param
+        n_classes = vocab_size + 1
+
+    else:
+
+        num_samples = 50000
+        sequence_length = 10
+        context_window = 10
+        vocab_size = round(sequence_length * 7.8125)
+        vocab = list(range(vocab_size))
+        embedding_dim = 50
+        embedding_path = 'Datasets/glove/glove.6B.50d.txt'
+        embedding_model = 'glove.6B.50d'
+        seed = 42
+        distr_param = 2
+        n_classes = vocab_size + 1
+
+    
+
+    file_name = f"primitive_NLP_NTP_dataset_n_smpl{num_samples}__seq_len{sequence_length}__cont_win{context_window}__" \
+    + f"v_size{vocab_size}__emb_dim{embedding_dim}__emb_type{embedding_model}__seed{seed}__d_par{distr_param}"
     file_ext = '.pkl'
     save_dir = os.path.join('Empirics', file_name)
+    
+
 elif(task == 2):
-    print("NEXT HISTOGRAM TASK \n")
-    file_name = 'NextHistogramDataset_n_smpl50000__seq_len10__v_size15__seed42'
+
+    print("PRIMITIVE NLP SUMMING TASK \n")
+
+    if running_on_cluster:
+        parser.add_argument('--num_samples', type=int, required=True, help='Number of samples')
+        parser.add_argument('--sequence_length', type=int, required=True, help='Sequence length')
+        parser.add_argument('--context_window', type=int, required=True, help='Context window')
+        parser.add_argument('--vocab_size', type=int, required=True, help='Vocabulary size')
+        parser.add_argument('--embedding_dim', type=int, required=True, help='Embedding dimension')
+        parser.add_argument('--embedding_model', type=str, required=True, help='Embedding model')
+        parser.add_argument('--seed', type=int, required=True, help='Seed value')
+        parser.add_argument('--distr_param', type=int, required=True, help='Distribution parameter')
+        args = parser.parse_args()
+
+        num_samples = args.num_samples
+        sequence_length = args.sequence_length
+        context_window = args.context_window
+        vocab_size = args.vocab_size
+        embedding_dim = args.embedding_dim
+        embedding_path = 'Datasets/glove/glove.6B.50d.txt'
+        embedding_model = args.embedding_model
+        seed = args.seed
+        distr_param = args.distr_param
+        n_classes = 2
+
+    else:
+
+        num_samples = 50000
+        sequence_length = 10
+        context_window = 10
+        vocab_size = round(sequence_length * 7.8125)
+        vocab = list(range(vocab_size))
+        embedding_dim = 50
+        embedding_path = 'Datasets/glove/glove.6B.50d.txt'
+        embedding_model = 'glove.6B.50d'
+        seed = 42
+        distr_param = 2
+        n_classes = 2
+
+
+    file_name = f"primitive_NLP_dataset_n_smpl{num_samples}__seq_len{sequence_length}__cont_win{context_window}__" \
+    + f"v_size{vocab_size}__emb_dim{embedding_dim}__emb_type{embedding_model}__seed{seed}__d_par{distr_param}"
     file_ext = '.pkl'
     save_dir = os.path.join('Empirics', file_name)
+
+
 elif(task == 3):
-    print("PPRIMITIVE NLP NTP TASK \n")
-    file_name = 'primitive_NLP_NTP_dataset_n_smpl50000__seq_len10__cont_win10__'\
-    'v_size78__emb_dim50__emb_typeglove.6B.50d__seed42__d_par1.1'
+
+    print("NEXT HISTOGRAM TASK \n")
+
+    if running_on_cluster:
+        parser.add_argument('--num_samples', type=int, required=True, help='Number of samples')
+        parser.add_argument('--sequence_length', type=int, required=True, help='Sequence length')
+        parser.add_argument('--vocab_size', type=int, required=True, help='Vocabulary size')
+        parser.add_argument('--seed', type=int, required=True, help='Seed value')
+        args = parser.parse_args()
+
+        num_samples = args.num_samples
+        sequence_length = args.sequence_length
+        vocab_size = args.vocab_size
+        seed = args.seed
+        n_classes = 7
+    
+    else:
+        
+        num_samples = 50000
+        sequence_length = 10
+        vocab_size = 15
+        seed = 42
+        n_classes = 7
+
+
+    file_name = f'NextHistogramDataset_n_smpl{num_samples}__seq_len{sequence_length}__v_size{vocab_size}__seed{seed}'
     file_ext = '.pkl'
     save_dir = os.path.join('Empirics', file_name)
+
 
 print(f"{file_name} \n")
 file_name = file_name + file_ext
