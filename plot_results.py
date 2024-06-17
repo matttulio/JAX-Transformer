@@ -12,9 +12,9 @@ import jax.numpy as jnp
 from flax.traverse_util import flatten_dict
 
 
-#case_study = 1  # Plot results for primitive NLP dataset for next token prediction
+case_study = 1  # Plot results for primitive NLP dataset for next token prediction
 #case_study = 2   # Plot results for primitive NLP dataset for summing task
-case_study = 3  # Plot results for Next Histogram Task dataset
+#case_study = 3  # Plot results for Next Histogram Task dataset
 
 print("\n")
 
@@ -96,13 +96,20 @@ results.train_losses = results.train_losses.apply(ast.literal_eval)
 results.val_losses = results.val_losses.apply(ast.literal_eval)
 results.val_acc = results.val_acc.apply(ast.literal_eval)
 
+idx = 0
+
+num_colors = np.max(results['run']) + 1
+colors = plt.colormaps['viridis'].resampled(num_colors)  # You can change 'tab10' to other colormaps
+
 for model_type, g in results.groupby('model_type'):
     acc = []
     for i,row in g.iterrows():
-        plt.plot(row['val_acc'], c='orange')
+        idx += 1
+        color = colors(idx % num_colors)
+        plt.plot(row['val_acc'], color=color, label=f'Validation Acc Run:{idx}')
         acc.append(row['val_acc'][-1])
     print(model_type, np.mean(acc), np.std(acc))
-    plt.plot([], [], c='orange', label='validation')
+
     plt.xlabel('epochs')
     plt.ylabel('accuracy')
     plt.legend()
@@ -111,16 +118,17 @@ for model_type, g in results.groupby('model_type'):
     plt.show()
 
 
+
 for model_type, g in results.groupby('model_type'):
-    for i,row in g.iterrows():
-        plt.plot(row['train_losses'],c='blue')
-        plt.plot(row['val_losses'],c='orange')
-        plt.plot([],[],c='blue',label='train')
-        plt.plot([],[],c='orange',label='validation')
-    plt.xlabel('epochs')
-    plt.ylabel('loss')
-    plt.legend()
-    plt.title(model_type)
+    fig, ax = plt.subplots()
+    for idx, row in g.iterrows():
+        color = colors(idx % num_colors)
+        ax.plot(row['train_losses'], color=color, label=f'Train Run')
+        ax.plot(row['val_losses'], color=color, label=f'Val Run')
+    ax.set_xlabel('Epochs')
+    ax.set_ylabel('Loss')
+    ax.legend()
+    ax.set_title(model_type)
     plt.savefig(os.path.join(save_dir, f'loss_{model_type}.pdf'))
     plt.show()
 

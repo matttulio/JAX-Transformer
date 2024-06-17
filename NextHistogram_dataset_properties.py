@@ -14,6 +14,10 @@ data_path = os.path.join(data_dir, file_name)
 with open(data_path, "rb") as file: 
     dataset = pickle.load(file)
 
+unique_rows, counts = np.unique(dataset.X, axis=0, return_counts=True)
+unique_row_counts = dict(zip(map(tuple, unique_rows), counts))
+
+print("Percentage of unique samples: ", (len(unique_row_counts) / dataset.num_samples) * 100, "\n")
 
 print("Statistical properties of the dataset:")
 print(f"Mean of the tokens: {np.mean(dataset.X):.2f}, "

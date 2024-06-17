@@ -33,9 +33,9 @@ else:
 
     print("Running locally")
 
-    task = 1  # Load primitive NLP NTP dataset
+    #task = 1  # Load primitive NLP NTP dataset
     #task = 2  # Load primitive NLP dataset
-    #task = 3  # Load NextHistogramTask dataset
+    task = 3  # Load NextHistogramTask dataset
 
 
 data_path = 'Datasets/Data'
@@ -232,8 +232,8 @@ for model_type in model_types:
 
         #print(train_epoch_metrics)
         first_train_loss = {'loss': train_minibatch_metrics[0]['loss']}
-        first_val_loss = {'loss': train_minibatch_metrics[0]['loss']}
-        first_val_acc = {'accuracy': train_minibatch_metrics[0]['accuracy']}
+        first_val_loss = {'loss': val_minibatch_metrics[0]['loss']}
+        first_val_acc = {'accuracy': val_minibatch_metrics[0]['accuracy']}
 
         train_epoch_metrics.insert(0, first_train_loss)
         val_epoch_metrics.insert(0, first_val_loss)
@@ -278,8 +278,8 @@ for r in range(n_runs):
             cloudpickle.dump(trained_state, file)
 
         first_train_loss = {'loss': train_minibatch_metrics[0]['loss']}
-        first_val_loss = {'loss': train_minibatch_metrics[0]['loss']}
-        first_val_acc = {'accuracy': train_minibatch_metrics[0]['accuracy']}
+        first_val_loss = {'loss': val_minibatch_metrics[0]['loss']}
+        first_val_acc = {'accuracy': val_minibatch_metrics[0]['accuracy']}
 
         train_epoch_metrics.insert(0, first_train_loss)
         val_epoch_metrics.insert(0, first_val_loss)

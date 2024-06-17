@@ -154,7 +154,7 @@ def train_and_evaluate(train_dataset, eval_dataset, state, epochs):
     val_epoch_metrics = []
 
     for epoch in range(1, epochs + 1):
-        best_eval_loss = 1e6
+        #best_eval_loss = 1e6
         print(f"Epoch {epoch}...")
         
         # ============== Training ============== #
