@@ -7,8 +7,6 @@
 #SBATCH --mem=4G
 #SBATCH --time=12:00:00
 #SBATCH --partition=gpu2
-#SBATCH --output=./log_opt/%x.o%A-%a
-#SBATCH --error=./log_opt/%x.o%A-%a
 
 
 
@@ -79,5 +77,8 @@ elif [ "$task" -eq 3 ]; then
     --vocab_size $vocab_size \
     --seed $seed \
 
-
 else
+
+
+#SBATCH --output=./log_opt/%x.o%A-%a
+#SBATCH --error=./log_opt/%x.o%A-%a
