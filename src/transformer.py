@@ -248,7 +248,7 @@ def convert_batch_to_jax(batch):
 #
 ######################################################
 
-def reparameterize(vocab_size, model_dim, hidden_dimension_fc, n_classes, seq_len, state, attention_input, rng):
+def reparameterize(vocab_size, model_dim, hidden_dimension_fc, n_classes, seq_len, state, attention_input, dummy_input, learning_rate, rng):
     """
     Function for reparameterizing a transformer model.
 
@@ -263,9 +263,6 @@ def reparameterize(vocab_size, model_dim, hidden_dimension_fc, n_classes, seq_le
     Returns:
     - new_transformer: Reparameterized transformer model.
     """
-
-    # Create a new transformer model with the same architecture as the original
-    new_transformer = TransformerSeq2Seq(vocab_size, model_dim, hidden_dimension_fc, n_classes, seq_len, 'both')
     
     # Set the parameters of the new transformer model
     new_transformer_params = state.params
@@ -300,6 +297,10 @@ def reparameterize(vocab_size, model_dim, hidden_dimension_fc, n_classes, seq_le
     new_transformer_params['params']['semantic_emb']['embedding'] += 0.001 * jax.random.normal(rng, new_transformer_params['params']['semantic_emb']['embedding'].shape)
     new_transformer_params['params']['positional_emb']['pe'] += 0.001 * jax.random.normal(rng, new_transformer_params['params']['positional_emb']['pe'].shape)
 
-    state = state.replace(params=new_transformer_params)
+    # Create a new transformer model with the same architecture as the original
+    new_transformer = TransformerSeq2Seq(vocab_size, model_dim, hidden_dimension_fc, n_classes, seq_len, 'both')
+    new_state = init_train_state(new_transformer, rng, dummy_input, learning_rate)
 
-    return state
+    new_state = state.replace(params=new_transformer_params)
+
+    return new_state

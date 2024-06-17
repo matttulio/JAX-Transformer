@@ -13,8 +13,8 @@ from flax.traverse_util import flatten_dict
 
 
 #case_study = 1  # Plot results for primitive NLP dataset for next token prediction
-case_study = 2   # Plot results for primitive NLP dataset for summing task
-#case_study = 3  # Plot results for Next Histogram Task dataset
+#case_study = 2   # Plot results for primitive NLP dataset for summing task
+case_study = 3  # Plot results for Next Histogram Task dataset
 
 print("\n")
 
@@ -22,7 +22,7 @@ if(case_study == 1):
 
     num_samples = 50000
     sequence_length = 10
-    context_window = 3
+    context_window = 10
     vocab_size = round(sequence_length * 7.8125)
     vocab = list(range(vocab_size))
     embedding_dim = 50
@@ -294,6 +294,10 @@ def model_distance(model1, model2, only_zeros=False):
 
 seed = 42
 rng = random.PRNGKey(seed)
+batch_size = 32
+learning_rate = 1e-4
+dummy_input = np.ones(shape=(batch_size, sequence_length), dtype=np.int8)
+
 df = []
 for model_type, g in results.groupby('model_type'):
   for i, row in g.iterrows():
@@ -302,20 +306,20 @@ for model_type, g in results.groupby('model_type'):
     transformer_frozen_init = TransformerSeq2Seq(vocab_size, model_dim, hidden_dimension_fc, n_classes, sequence_length, model_type)
     with open(os.path.join(retrieve_dir, f'run_{r}_initmodel_{model_type}_orig.pkl'), "rb") as file:
         init_orig_state = cloudpickle.load(file)
-    init_orig_state = reparameterize(vocab_size, model_dim, hidden_dimension_fc, n_classes, sequence_length, init_orig_state, model_type, rng)
+    init_orig_state = reparameterize(vocab_size, model_dim, hidden_dimension_fc, n_classes, sequence_length, init_orig_state, model_type, dummy_input, learning_rate, rng)
     transformer_frozen_init.params = init_orig_state.params
     
 
     transformer_frozen = TransformerSeq2Seq(vocab_size, model_dim, hidden_dimension_fc, n_classes, sequence_length, model_type)
     with open(os.path.join(retrieve_dir, f'run_{r}_model_{model_type}_orig.pkl'), "rb") as file:
         state = cloudpickle.load(file)
-    state = reparameterize(vocab_size, model_dim, hidden_dimension_fc, n_classes, sequence_length, state, model_type, rng)
+    state = reparameterize(vocab_size, model_dim, hidden_dimension_fc, n_classes, sequence_length, state, model_type, dummy_input, learning_rate, rng)
     transformer_frozen.params = state.params
     
     reparam_trans = TransformerSeq2Seq(vocab_size, model_dim, hidden_dimension_fc, n_classes, sequence_length, 'both')
     with open(os.path.join(retrieve_dir, f'run_{r}_model_{model_type}_retrained.pkl'), "rb") as file:
         state_rep = cloudpickle.load(file)
-    state_rep = reparameterize(vocab_size, model_dim, hidden_dimension_fc, n_classes, sequence_length, state_rep, model_type, rng)
+    state_rep = reparameterize(vocab_size, model_dim, hidden_dimension_fc, n_classes, sequence_length, state_rep, model_type, dummy_input, learning_rate, rng)
     reparam_trans.params = state_rep.params
         
     dist_frozen_to_SGD = model_distance(reparam_trans, transformer_frozen) 

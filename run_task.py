@@ -18,8 +18,8 @@ import cloudpickle
 import pickle
 
 #task = 1  # Load primitive NLP dataset
-#task = 2  # Load NextHistogramTask dataset
-task = 3  # Load primitive NLP NTP dataset
+task = 2  # Load NextHistogramTask dataset
+#task = 3  # Load primitive NLP NTP dataset
 
 data_path = 'Datasets/Data'
 
@@ -142,7 +142,7 @@ for r in range(n_runs):
         with open(os.path.join(save_dir, f'run_{r}_model_{model_type}_orig.pkl'), "rb") as file:
             orig_state = cloudpickle.load(file)
 
-        rep_trans_state = reparameterize(vocab_size, model_dim, hidden_dimension_fc, n_classes, seq_len, orig_state, model_type, rng)
+        rep_trans_state = reparameterize(vocab_size, model_dim, hidden_dimension_fc, n_classes, seq_len, orig_state, model_type, dummy_input, learning_rate, rng)
 
         with open(os.path.join(save_dir, f'run_{r}_model_{model_type}_repar.pkl'), "wb") as file:
             cloudpickle.dump(trained_state, file)
