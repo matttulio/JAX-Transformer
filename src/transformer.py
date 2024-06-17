@@ -265,7 +265,7 @@ def reparameterize(vocab_size, model_dim, hidden_dimension_fc, n_classes, seq_le
     """
 
     # Create a new transformer model with the same architecture as the original
-    new_transformer = TransformerSeq2Seq(vocab_size, model_dim, hidden_dimension_fc, n_classes, seq_len, 'both')
+    new_transformer = TransformerSeq2Seq(vocab_size, model_dim, hidden_dimension_fc, n_classes, seq_len, attention_input)
     
     # Set the parameters of the new transformer model
     new_transformer_params = state.params
