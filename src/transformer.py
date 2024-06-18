@@ -140,10 +140,34 @@ class TransformerSeq2Seq(nn.Module):
     
 ######################################################
 #
-# TRAIN
+# TRAIN AND EVALUATE
 #
 ######################################################
 
+
+def eval_init(train_dataset, eval_dataset, state):
+
+    # Get initial metrics before training starts
+    print("Initial metrics before training...")
+
+    # ============== Initial Training Metrics ============== #
+    # Process only the first batch for initial training metrics
+    train_datagen = iter(train_dataset)
+    batch = next(train_datagen)
+    metrics = eval_step(state, batch)
+    print(f"Initial Train loss = {metrics['loss']:.4f}")
+    first_train_metrics = metrics
+
+    # ============== Initial Validation Metrics ============== #
+    # Process only the first batch for initial validation metrics
+    eval_datagen = iter(eval_dataset)
+    batch = next(eval_datagen)
+    metrics = eval_step(state, batch)
+    print(f"Initial Val loss = {metrics['loss']:.4f}, Initial Val accuracy = {metrics['accuracy']:.4f}")
+    first_eval_metrics = metrics
+    print('\n')
+
+    return first_train_metrics, first_eval_metrics
 
 def train_and_evaluate(train_dataset, eval_dataset, state, epochs):
 
@@ -221,12 +245,12 @@ def cross_entropy_loss(*, logits, labels):
     ).mean()
 
 def init_train_state(
-    model, random_key, shape, learning_rate
+    model, random_key, shape, learning_rate, optimizer=optax.adam
 ) -> train_state.TrainState:
     # Initialize the Model
     variables = model.init(random_key, shape)
     # Create the Optimizer
-    optimizer = optax.adam(learning_rate)
+    optimizer = optimizer(learning_rate)
     # Return a TrainState
     return train_state.TrainState.create(
         apply_fn = model.apply,
@@ -299,7 +323,7 @@ def reparameterize(vocab_size, model_dim, hidden_dimension_fc, n_classes, seq_le
 
     # Create a new transformer model with the same architecture as the original
     new_transformer = TransformerSeq2Seq(vocab_size, model_dim, hidden_dimension_fc, n_classes, seq_len, 'both')
-    new_state = init_train_state(new_transformer, rng, dummy_input, learning_rate)
+    new_state = init_train_state(new_transformer, rng, dummy_input, learning_rate, optax.sgd)
 
     new_state = state.replace(params=new_transformer_params)
 

@@ -12,9 +12,9 @@ import jax.numpy as jnp
 from flax.traverse_util import flatten_dict
 
 
-case_study = 1  # Plot results for primitive NLP dataset for next token prediction
+#case_study = 1  # Plot results for primitive NLP dataset for next token prediction
 #case_study = 2   # Plot results for primitive NLP dataset for summing task
-#case_study = 3  # Plot results for Next Histogram Task dataset
+case_study = 3  # Plot results for Next Histogram Task dataset
 
 print("\n")
 
@@ -90,14 +90,14 @@ model_dim = 64
 
 select_run = 0
 
-
+# ============== Results frozen transformer ============== #
 results = pd.read_csv(os.path.join(retrieve_dir, 'frozen_transformer_result.csv'))
 results.train_losses = results.train_losses.apply(ast.literal_eval)
 results.val_losses = results.val_losses.apply(ast.literal_eval)
 results.val_acc = results.val_acc.apply(ast.literal_eval)
 
+# ============== Validation accuracy vs epochs ============== #
 idx = 0
-
 num_colors = np.max(results['run']) + 1
 colors = plt.colormaps['viridis'].resampled(num_colors)  # You can change 'tab10' to other colormaps
 
@@ -106,7 +106,7 @@ for model_type, g in results.groupby('model_type'):
     for i,row in g.iterrows():
         idx += 1
         color = colors(idx % num_colors)
-        plt.plot(row['val_acc'], color=color, label=f'Validation Acc Run:{idx}')
+        plt.plot(row['val_acc'], color=color, label=f'Validation Acc Run {idx}')
         acc.append(row['val_acc'][-1])
     print(model_type, np.mean(acc), np.std(acc))
 
@@ -115,24 +115,27 @@ for model_type, g in results.groupby('model_type'):
     plt.legend()
     plt.title(model_type)
     plt.savefig(os.path.join(save_dir, f'accuracy_{model_type}.pdf'))
-    plt.show()
+    #plt.show()
 
 
-
+# ============== Val and Train loss against epochs ============== #
+idx = 0
 for model_type, g in results.groupby('model_type'):
     fig, ax = plt.subplots()
-    for idx, row in g.iterrows():
+    for i, row in g.iterrows():
+        idx += 1
         color = colors(idx % num_colors)
-        ax.plot(row['train_losses'], color=color, label=f'Train Run')
-        ax.plot(row['val_losses'], color=color, label=f'Val Run')
+        ax.plot(row['train_losses'], color=color, label=f'Train Run {idx}')
+        ax.plot(row['val_losses'], color=color, label=f'Val Run {idx}')
     ax.set_xlabel('Epochs')
     ax.set_ylabel('Loss')
     ax.legend()
     ax.set_title(model_type)
     plt.savefig(os.path.join(save_dir, f'loss_{model_type}.pdf'))
-    plt.show()
+    #plt.show()
 
 
+# ============== Attention map ============== #
 def highlight_cell(x,y,color,transformer,ax):
     # Given a coordinate (x,y), highlight the corresponding cell using a colored frame in the ac
     # after having called imshow already
@@ -212,9 +215,9 @@ norm = Normalize(vmin=0, vmax=1.0)
 cbar = fig.colorbar(im1, ax=axes, norm=norm)
 cbar.set_label('attention value',fontsize=12)
 plt.savefig(os.path.join(save_dir, f'tiny_example.pdf'))
-plt.show()
+#plt.show()
 
-
+# ============== Results for reparam transformer ============== #
 for model_type, g in results.groupby('model_type'):
   for i, row in g.iterrows():
     r = row['run']
@@ -237,6 +240,7 @@ for model_type, g in results.groupby('model_type'):
       reparam_trans,
     ]
     
+    # ============== Attention maps retrained ============== #
     data = np.random.random((10, 10))
     fig, axes = plt.subplots(figsize=(15,8),ncols=3,nrows=2)
     im1 = axes[0,0].imshow(data, cmap=cmap, vmin=0, vmax=1.0)
@@ -253,10 +257,10 @@ for model_type, g in results.groupby('model_type'):
     cbar = fig.colorbar(im1, ax=axes, norm=norm)
     cbar.set_label('attention value',fontsize=12)
     plt.savefig(os.path.join(save_dir,f'../figures/run_{r}_training_comparison_{orig_trans.attention_input}.pdf'),bbox_inches='tight')
-    plt.show()
+    #plt.show()
 
 
-
+# ============== Distance between the models's parameters ============== #
 def model_distance(model1, model2, only_zeros=False):
     params1 = [param for param in model1.parameters()]
     params2 = [param for param in model2.parameters()]
@@ -343,8 +347,50 @@ for model_type, g in results.groupby('model_type'):
         'run': r
     })
 
-
 df = pd.DataFrame(df)
 df = df.groupby('model_type').agg(['mean','std'])
-
 print(df)
+
+results = pd.read_csv(os.path.join(retrieve_dir, 'reparameterized_transformers.csv'))
+results.train_losses = results.train_losses.apply(ast.literal_eval)
+results.val_losses = results.val_losses.apply(ast.literal_eval)
+results.val_acc = results.val_acc.apply(ast.literal_eval)
+
+# ============== Accuracy reparametrized model ============== #
+idx = 0
+num_colors = np.max(results['run']) + 1
+colors = plt.colormaps['viridis'].resampled(num_colors)  # You can change 'tab10' to other colormaps
+
+
+for model_type, g in results.groupby('model_type'):
+    acc = []
+    for i,row in g.iterrows():
+        idx += 1
+        color = colors(idx % num_colors)
+        plt.plot(row['val_acc'], color=color, label=f'Validation Acc Run{idx}')
+        acc.append(row['val_acc'][-1])
+    print(model_type, np.mean(acc), np.std(acc))
+
+    plt.xlabel('epochs')
+    plt.ylabel('accuracy')
+    plt.legend()
+    plt.title(f"Reparametrized {model_type}")
+    plt.savefig(os.path.join(save_dir, f'accuracy_reparametrized_{model_type}.pdf'))
+    #plt.show()
+
+
+# ============== Train and Val loss reparametrized model ============== #
+idx = 0
+for model_type, g in results.groupby('model_type'):
+    fig, ax = plt.subplots()
+    for i, row in g.iterrows():
+        idx += 1
+        color = colors(idx % num_colors)
+        ax.plot(row['train_losses'], color=color, label=f'Train Run {idx}')
+        ax.plot(row['val_losses'], color=color, label=f'Val Run {idx}')
+    ax.set_xlabel('Epochs')
+    ax.set_ylabel('Loss')
+    ax.legend()
+    ax.set_title(f"Reparametrized {model_type}")
+    plt.savefig(os.path.join(save_dir, f'loss_reparametrized_{model_type}.pdf'))
+    #plt.show()
