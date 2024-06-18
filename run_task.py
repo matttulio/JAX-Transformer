@@ -52,7 +52,7 @@ if(task == 1):
         parser.add_argument('--embedding_dim', type=int, required=True, help='Embedding dimension')
         parser.add_argument('--embedding_model', type=str, required=True, help='Embedding model')
         parser.add_argument('--seed', type=int, required=True, help='Seed value')
-        parser.add_argument('--distr_param', type=int, required=True, help='Distribution parameter')
+        parser.add_argument('--distr_param', type=str, required=True, help='Distribution parameter')
         args = parser.parse_args()
 
         num_samples = args.num_samples
@@ -63,7 +63,12 @@ if(task == 1):
         embedding_path = 'Datasets/glove/glove.6B.50d.txt'
         embedding_model = args.embedding_model
         seed = args.seed
-        distr_param = args.distr_param
+
+        try:
+            distr_param = int(args.distr_param)
+        except ValueError:
+            distr_param = float(args.distr_param)
+
         n_classes = vocab_size + 1
 
     else:
@@ -100,7 +105,7 @@ elif(task == 2):
         parser.add_argument('--embedding_dim', type=int, required=True, help='Embedding dimension')
         parser.add_argument('--embedding_model', type=str, required=True, help='Embedding model')
         parser.add_argument('--seed', type=int, required=True, help='Seed value')
-        parser.add_argument('--distr_param', type=int, required=True, help='Distribution parameter')
+        parser.add_argument('--distr_param', type=str, required=True, help='Distribution parameter')
         args = parser.parse_args()
 
         num_samples = args.num_samples
@@ -111,7 +116,12 @@ elif(task == 2):
         embedding_path = 'Datasets/glove/glove.6B.50d.txt'
         embedding_model = args.embedding_model
         seed = args.seed
-        distr_param = args.distr_param
+
+        try:
+            distr_param = int(args.distr_param)
+        except ValueError:
+            distr_param = float(args.distr_param)
+            
         n_classes = 2
 
     else:

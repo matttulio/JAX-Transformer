@@ -1,4 +1,5 @@
 #!/bin/bash
+#SBATCH --job-name=JOB
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=mgallo@sissa.it
 #SBATCH --nodes=1
@@ -7,8 +8,10 @@
 #SBATCH --mem=4G
 #SBATCH --time=12:00:00
 #SBATCH --partition=gpu2
+#SBATCH --output=./log_opt/%x.o%A-%a
+#SBATCH --error=./log_opt/%x.o%A-%a
 
-
+task=${1}
 
 if [ "$task" -eq 1 ]; then
   echo "Running primitive NLP NTP task"
@@ -19,9 +22,7 @@ if [ "$task" -eq 1 ]; then
   embedding_dim=50
   embedding_model='glove.6B.50d'
   seed=42
-  distr_param=2
-
-  #SBATCH --job-name=PNLPNTP_cw$context_window_dp$distr_param
+  distr_param=1.1
 
   python -u run_task.py \
     --task $task \
@@ -39,14 +40,12 @@ elif [ "$task" -eq 2 ]; then
   
   num_samples=50000
   sequence_length=10
-  context_window=10
+  context_window=3
   vocab_size=78
   embedding_dim=50
   embedding_model='glove.6B.50d'
   seed=42
   distr_param=2
-
-  #SBATCH --job-name=PNLP_cw$context_window_dp$distr_param
 
   python -u run_task.py \
     --task $task \
@@ -68,8 +67,6 @@ elif [ "$task" -eq 3 ]; then
   seed=42
   n_classes=7
 
-  #SBATCH --job-name=NHT
-
   python -u run_task.py \
     --task $task \
     --num_samples $num_samples \
@@ -77,8 +74,4 @@ elif [ "$task" -eq 3 ]; then
     --vocab_size $vocab_size \
     --seed $seed \
 
-else
-
-
-#SBATCH --output=./log_opt/%x.o%A-%a
-#SBATCH --error=./log_opt/%x.o%A-%a
+fi
