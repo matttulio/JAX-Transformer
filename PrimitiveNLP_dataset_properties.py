@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 import os
+import seaborn as sns
+import torch
 from src.benchmarks import PrimitiveNLP
 from scipy.optimize import curve_fit
 from scipy.stats import chi2_contingency
@@ -10,7 +12,7 @@ print("\n")
 print("PROPERTIES OF THE PRIMITIVE NLP DATASET")
 print("\n")
 data_dir = 'Datasets/Data'
-file_name = 'primitive_NLP_dataset_n_smpl500__seq_len10__cont_win10__'\
+file_name = 'primitive_NLP_dataset_n_smpl50000__seq_len10__cont_win10__'\
         'v_size78__emb_dim50__emb_typeglove.6B.50d__seed42__d_par1.1.pkl'
 
 data_path = os.path.join(data_dir, file_name)
@@ -19,6 +21,91 @@ with open(data_path, "rb") as file:
     dataset = pickle.load(file)
 
 
+# ============== Dot product similarity of tokens ============== #
+def read_logspaced_embeddings(embedding_path, vocab_size):
+    embedding_vectors = []
+    with open(embedding_path, 'r', encoding='utf-8') as f:
+        next(f)  # Skip the header or first line if any
+        lines = f.readlines()
+        num_rows = len(lines)
+
+        if vocab_size > num_rows:
+            raise ValueError(f"vocab_size ({vocab_size}) cannot be greater than the number of rows in the file ({num_rows})")
+        
+        for i in range(num_rows):
+            indices = np.unique(np.logspace(np.log(i+1), np.log(num_rows), num=vocab_size-1, base=np.e, endpoint=True, dtype=int))
+            if(len(indices) == vocab_size-1):
+                indices = np.insert(indices, 0, 0)
+                break
+
+        if(len(indices) != vocab_size):
+            raise ValueError("It was not possible to correctly sample logspace embeddings")
+
+
+        for idx in indices:
+            line = lines[idx]
+            values = line.split()
+            vector = torch.tensor([float(val) for val in values[1:]])
+            embedding_vectors.append(vector)
+    return torch.stack(embedding_vectors).numpy()
+
+def read_embeddings(embedding_path, vocab_size):
+    embedding_vectors = []
+    with open(embedding_path, 'r', encoding = 'utf-8') as f:
+        next(f)  # Skip the header or first line if any
+        # Use the readlines() method to read all lines into a list
+        lines = f.readlines()
+
+        # Count the number of lines in the list
+        num_rows = len(lines)
+
+        step = num_rows // vocab_size
+        for i, line in enumerate(lines):
+            if i >= vocab_size * step:  # Break if enough vectors are read
+                break
+            if i % step == 0:  # Only take every step-th vector
+                values = line.split()
+                vector = torch.tensor([float(val) for val in values[1:]])
+                embedding_vectors.append(vector)
+    return torch.stack(embedding_vectors).numpy()
+
+def normalize_embeddings(embeddings):
+    norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+    return embeddings / norms
+
+def compute_similarity_matrix(normalized_embeddings):
+    return np.dot(normalized_embeddings, normalized_embeddings.T)
+
+
+
+embedding_path = 'Datasets/glove/glove.6B.50d.txt'
+vocab_size = dataset.vocab_size  # Adjust this based on your requirements
+
+embeddings = read_logspaced_embeddings(embedding_path, vocab_size)
+norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+embeddings = embeddings / norms
+similarity_matrix = np.dot(embeddings, embeddings.T)
+labels = [f'{i+1}' for i in range(vocab_size)]
+plt.figure(figsize=(10, 8))
+plt.xticks(fontsize=6)  
+plt.yticks(fontsize=6)  
+sns.heatmap(similarity_matrix, xticklabels=labels, yticklabels=labels, cmap='viridis')
+plt.title('Dot Product Similarity of Normalized Logspaced Embeddings')
+plt.show()
+
+embeddings = read_embeddings(embedding_path, vocab_size)
+norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+embeddings = embeddings / norms
+similarity_matrix = np.dot(embeddings, embeddings.T)
+plt.figure(figsize=(10, 8))
+plt.xticks(fontsize=6)  
+plt.yticks(fontsize=6)  
+sns.heatmap(similarity_matrix, xticklabels=labels, yticklabels=labels, cmap='viridis')
+plt.title('Dot Product Similarity of Normalized Linspaced Embeddings')
+plt.show()
+
+
+# ============== Dataset statistics ============== #
 unique_rows, counts = np.unique(dataset.X, axis=0, return_counts=True)
 unique_row_counts = dict(zip(map(tuple, unique_rows), counts))
 
@@ -32,8 +119,8 @@ print(f"Mean of the labels: {np.mean(dataset.y):.2f}, "
       f"STD of the labels: {np.std(dataset.y):.2f}")
 print("\n")
 
+# ============== Distribution of targets ============== #
 distr = []
-
 vocab_y = np.unique(dataset.y)  # Convert y to a set to get unique values, then convert back to list
 total_sequences = dataset.y.shape[0] * dataset.y.shape[1]  # Assuming dataset.seq_len represents the length of each sequence
 
@@ -48,8 +135,8 @@ plt.ylabel('Percentage')
 plt.title('Distribution of the labels')
 plt.show()
 
+# ============== Distribution of input tokens ============== #
 distr = []
-
 # Count how many times a token appears
 for i in (dataset.vocab):
     z = len(dataset.X[np.where(dataset.X == i)])
@@ -78,7 +165,7 @@ plt.legend()
 plt.title('Distribution of the tokens')
 plt.show()
 
-
+# ============== Fit Zipf's Law ============== #
 # Define the function to fit
 def func(x, k, b):
     return  1 / (x + b) ** k

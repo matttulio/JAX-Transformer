@@ -10,6 +10,7 @@ from src.transformer import *
 import cloudpickle
 import jax.numpy as jnp
 from flax.traverse_util import flatten_dict
+import seaborn as sns
 
 
 #case_study = 1  # Plot results for primitive NLP dataset for next token prediction
