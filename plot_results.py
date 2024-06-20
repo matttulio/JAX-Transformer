@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.colors import Normalize
+from matplotlib.colors import Normalize, LinearSegmentedColormap
 import pandas as pd
 import ast
 import os
@@ -145,6 +145,36 @@ for model_type, g in results.groupby('model_type'):
     #plt.show()
 
 
+cmap_diff = LinearSegmentedColormap.from_list("grad_cmap", ["lightblue", "#d15f90"])
+
+idx = 0
+for run, g in results.groupby('run'):
+
+    fig, ax = plt.subplots()
+    val_losses_dict = {}
+
+    for model_type, row in g.iterrows():
+        val_losses_dict[model_type] = row['val_losses']
+
+
+    val_loss_diff = [a - b for a, b in zip(val_losses_dict[0], val_losses_dict[1])]
+    val_loss_diff[-1] = -1 * val_loss_diff[-1]
+
+    norm = Normalize(vmin=min(val_loss_diff), vmax=max(val_loss_diff))
+    colors_diff = [cmap_diff(norm(val)) for val in val_loss_diff]
+
+    ax.plot(range(len(val_loss_diff)), val_loss_diff, linestyle='-', linewidth=1, color='gray')
+    ax.scatter(range(len(val_loss_diff)), val_loss_diff, s=50, c=colors_diff)
+
+    ax.set_xlabel('Epochs')
+    ax.set_ylabel('Validation Loss Difference')
+    #ax.legend()
+    ax.set_title('Difference Validation Losses')
+    plt.savefig(os.path.join(save_dir, f'val_loss_difference_{model_types[0]}_{model_types[1]}_run_{run}.pdf'))
+    plt.clf()
+
+
+
 # ============== Attention map ============== #
 def highlight_cell(x, y, color, ax):
     # Given a coordinate (x,y), highlight the corresponding cell using a colored frame in the ac
@@ -249,7 +279,6 @@ with open(os.path.join(retrieve_dir, 'input_sequences.pkl'), "rb") as file:
        input_sequences = cloudpickle.load(file)
 
 xs = [input_sequences[0][0].tolist(), input_sequences[0][1].tolist(), input_sequences[0][2].tolist()]
-print(xs)
 
 print(f"n_classes = ", n_classes)
 
@@ -289,7 +318,10 @@ plt.savefig(os.path.join(save_dir, f'tiny_example.pdf'))
 plt.clf()
 #plt.show()
 
+
+
 # ============== Results for reparam transformer ============== #
+
 for model_type, g in results.groupby('model_type'):
   for i, row in g.iterrows():
     r = row['run']
