@@ -33,6 +33,9 @@ if(case_study == 1):
     distr_param = 2
     n_classes = vocab_size + 1
 
+    rs = np.random.RandomState(seed)
+    rs.shuffle(vocab)
+
     print("Plotting results for primitive NLP dataset for next token prediction...")
     print(f"The parameters of the dataset are: num_samples={num_samples}, sequence_lenght={sequence_length}, context_window={context_window}")
     print(f"vocab_size={vocab_size}, embedding_dim={embedding_dim}, embedding_type={embedding_model}, seed={seed}, distribution_parameter={distr_param}\n")
@@ -56,6 +59,9 @@ elif(case_study == 2):
     seed = 42
     distr_param = 2
     n_classes = 2
+
+    rs = np.random.RandomState(seed)
+    rs.shuffle(vocab)
 
     print("Plotting result for primitive NLP dataset for next token prediction...")
     print(f"The parameters of the dataset are: num_samples={num_samples}, sequence_lenght={sequence_length}, context_window={context_window}")
@@ -140,10 +146,10 @@ for model_type, g in results.groupby('model_type'):
 
 
 # ============== Attention map ============== #
-def highlight_cell(x,y,color,transformer,ax):
+def highlight_cell(x, y, color, ax):
     # Given a coordinate (x,y), highlight the corresponding cell using a colored frame in the ac
     # after having called imshow already
-    rect = plt.Rectangle((x-.5, y-.5), 1,1, fill=False,color=color,lw=2)
+    rect = plt.Rectangle((x-.5, y-.5), 1, 1, fill=False, color=color, lw=2)
     ax.add_patch(rect)
     return rect
 
@@ -155,22 +161,79 @@ def visualize_attention_matrix(x, transformer, ax, cmap='tab20b'):
     data = attn_probs[0]
     #data = A.detach().cpu().numpy()[0]
     ax.imshow(data,vmin=0,vmax=1.0,cmap=cmap)
-    for i, x_i in enumerate(x):
-        for j, x_j in enumerate(x):
-            if x_i == x_j:
-                highlight_cell(i, j, color='red', transformer=transformer, ax=ax)
-    for k in range(data.shape[0]):
-            for j in range(data.shape[1]):
-                ax.text(j, k, f'{int(np.round(data[k, j]*100))}', ha='center', va='center', color='white')
 
     if(case_study == 3):
+        for i, x_i in enumerate(x):
+            for j, x_j in enumerate(x):
+                if x_i == x_j:
+                    highlight_cell(i, j, color='red', transformer=transformer, ax=ax)
+        for k in range(data.shape[0]):
+                for j in range(data.shape[1]):
+                    ax.text(j, k, f'{int(np.round(data[k, j]*100))}', ha='center', va='center', color='white')
+
         alpha = 'ABCDEFGHIJKLMNOPQRSTUVW'
         ax.set_xticks(np.arange(len(x)), [alpha[a] for a in x], fontsize=13)
         ax.set_yticks(np.arange(len(x)), [alpha[a] for a in x], fontsize=13)
 
-    ax.tick_params(axis='x', which='both', bottom=False, top=True)
-    ax.xaxis.tick_top()
+        ax.tick_params(axis='x', which='both', bottom=False, top=True)
+        ax.xaxis.tick_top()
 
+
+    elif(case_study == 1 or case_study == 2):
+
+        if(embedding_path == None):
+            # Build a random embedding
+            embeddings = nn.Embedding(vocab_size, embedding_dim)  # embedding layer
+            embedding_matrix = embeddings.weight.data  # embedding matrix
+        else:
+            # Load pre-trained embedding matrix
+            embedding_vectors = []
+            with open(embedding_path, 'r', encoding = 'utf-8') as f:
+                next(f)  # Skip the header or first line if any
+                # Use the readlines() method to read all lines into a list
+                lines = f.readlines()
+
+                # Count the number of lines in the list
+                num_rows = len(lines)
+
+                step = num_rows // vocab_size
+                for i, line in enumerate(lines):
+                    if i >= vocab_size * step:  # Break if enough vectors are read
+                        break
+                    if i % step == 0:  # Only take every step-th vector
+                        values = line.split()
+                        vector = torch.tensor([float(val) for val in values[1:]])
+                        embedding_vectors.append(vector)
+                    
+            embedding_matrix = embedding_vectors
+
+        max_pos = sequence_length
+        position_enc = torch.tensor([[torch.sin(torch.tensor(pos / (10000 ** (i // 2 * 2.0 / embedding_dim)), dtype=torch.float)) if i % 2 == 0 else torch.cos(torch.tensor(pos / (10000 ** (i // 2 * 2.0 / embedding_dim)), dtype=torch.float)) for i in range(embedding_dim)] for pos in range(max_pos)], dtype=torch.float)
+
+        highlight_cell(0, 0, color='white', ax=ax)
+        for i in range(sequence_length-2, 0, -1):
+
+            token_index = vocab.index(x[i+1])
+            token_embedding = embedding_matrix[token_index] + position_enc[i+1]
+
+            similarities = [torch.dot(embedding_matrix[vocab.index(x[k])] + position_enc[k], token_embedding) for k in range(i)]
+            similarities = torch.tensor([similarities])
+            _, next_token_i = torch.topk(similarities, i)
+
+            if(next_token_i[0][0] == next_token_i[0][-1]):
+                highlight_cell(next_token_i[0][0], i, color='white', ax=ax)
+            else:
+                highlight_cell(next_token_i[0][0], i, color='green', ax=ax)
+                highlight_cell(next_token_i[0][-1], i, color='red', ax=ax)
+
+        for k in range(data.shape[0]):
+            for j in range(data.shape[1]):
+                ax.text(j, k, f'{int(np.round(data[k, j]*100))}', ha='center', va='center', color='white')
+
+        ax.set_xticks(np.arange(len(x)), [vocab[a] for a in x], fontsize=7)
+        ax.set_yticks(np.arange(len(x)), [vocab[a] for a in x], fontsize=7)
+        ax.tick_params(axis='x', which='both', bottom=False, top=True)
+        ax.xaxis.tick_top()
 
 # Extract colors from tab20b colormap
 tab20b_colors = plt.cm.tab20b.colors
