@@ -33,12 +33,9 @@ else:
 
     print("Running locally")
 
-    #task = 1  # Load primitive NLP NTP dataset
+    task = 1  # Load primitive NLP NTP dataset
     #task = 2  # Load primitive NLP dataset
-    task = 3  # Load NextHistogramTask dataset
-
-
-data_path = 'Datasets/Data'
+    #task = 3  # Load NextHistogramTask dataset
 
 if(task == 1):
 
@@ -182,6 +179,8 @@ file_name = file_name + file_ext
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
+data_path = 'Datasets/Data'
+
 with open(os.path.join(data_path, file_name), "rb") as f: 
     dataset = pickle.load(f)
 
@@ -210,13 +209,25 @@ val_dataloader = DataLoader(val_dataset, batch_size=64, shuffle=True, generator=
 train_dataset = [convert_batch_to_jax(batch) for batch in train_dataloader]
 val_dataset = [convert_batch_to_jax(batch) for batch in val_dataloader]
 
+with open(os.path.join(save_dir, 'sequences_to_predict.pkl'), "wb") as f:
+    sequences_to_predict = []
+    for _, sequence_to_predict in val_dataset:
+        sequences_to_predict.append(sequence_to_predict)
+    cloudpickle.dump(sequences_to_predict, f)
+
+with open(os.path.join(save_dir, 'input_sequences.pkl'), "wb") as f:
+    input_sequences = []
+    for input_sequence, _ in val_dataset:
+        input_sequences.append(input_sequence)
+    cloudpickle.dump(input_sequences, f)
+
 hidden_dimension_fc = 128
 model_dim = 64
 batch_size = 32
-n_runs = 5
+n_runs = 1
 #model_types = ['only_pos', 'only_sem']
 model_types = ['only_sem', 'only_pos']
-n_epochs = 200
+n_epochs = 2
 
 results = []
 dummy_input = np.ones(shape=(batch_size, seq_len), dtype=np.int8)
@@ -257,6 +268,11 @@ for model_type in model_types:
             'val_acc': [float(metrics['accuracy']) for metrics in val_epoch_metrics if 'accuracy' in metrics],
             'run':i,
         })
+
+        predicted_sequences = predict(val_dataset, trained_state)
+
+        with open(os.path.join(save_dir, f'predicted_sequences_run_{i}_model_{model_type}.pkl'), "wb") as f:
+            cloudpickle.dump(predicted_sequences, f)
 
     print('Done')
 

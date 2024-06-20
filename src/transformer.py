@@ -169,6 +169,24 @@ def eval_init(train_dataset, eval_dataset, state):
 
     return first_train_metrics, first_eval_metrics
 
+
+def predict(dataset, state):
+    print(f"Predicting sequences...")
+    num_batches = len(dataset)
+    datagen = iter(dataset)
+
+    predictions = []
+    for batch_idx in tqdm(range(1, num_batches + 1)):
+
+        batch = next(datagen)
+        batch, _ = batch
+        logits = state.apply_fn(state.params, batch)
+        probs = nn.softmax(logits)
+        prediction = jnp.argmax(probs, axis=-1)
+        predictions.append(prediction)
+    
+    return predictions
+
 def train_and_evaluate(train_dataset, eval_dataset, state, epochs):
 
     num_train_batches = len(train_dataset)

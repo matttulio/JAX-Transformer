@@ -10,12 +10,12 @@ from src.transformer import *
 import cloudpickle
 import jax.numpy as jnp
 from flax.traverse_util import flatten_dict
-import seaborn as sns
 
 
-#case_study = 1  # Plot results for primitive NLP dataset for next token prediction
+
+case_study = 1  # Plot results for primitive NLP dataset for next token prediction
 #case_study = 2   # Plot results for primitive NLP dataset for summing task
-case_study = 3  # Plot results for Next Histogram Task dataset
+#case_study = 3  # Plot results for Next Histogram Task dataset
 
 print("\n")
 
@@ -88,7 +88,6 @@ if not os.path.exists(save_dir):
 model_types = ['only_pos','only_sem']
 hidden_dimension_fc = 128
 model_dim = 64
-
 select_run = 0
 
 # ============== Results frozen transformer ============== #
@@ -97,9 +96,11 @@ results.train_losses = results.train_losses.apply(ast.literal_eval)
 results.val_losses = results.val_losses.apply(ast.literal_eval)
 results.val_acc = results.val_acc.apply(ast.literal_eval)
 
+n_runs = np.max(results['run']) + 1
+
 # ============== Validation accuracy vs epochs ============== #
 idx = 0
-num_colors = np.max(results['run']) + 1
+num_colors = n_runs
 colors = plt.colormaps['viridis'].resampled(num_colors)  # You can change 'tab10' to other colormaps
 
 for model_type, g in results.groupby('model_type'):
@@ -116,6 +117,7 @@ for model_type, g in results.groupby('model_type'):
     plt.legend()
     plt.title(model_type)
     plt.savefig(os.path.join(save_dir, f'accuracy_{model_type}.pdf'))
+    plt.clf()
     #plt.show()
 
 
@@ -133,6 +135,7 @@ for model_type, g in results.groupby('model_type'):
     ax.legend()
     ax.set_title(model_type)
     plt.savefig(os.path.join(save_dir, f'loss_{model_type}.pdf'))
+    plt.clf()
     #plt.show()
 
 
@@ -155,13 +158,16 @@ def visualize_attention_matrix(x, transformer, ax, cmap='tab20b'):
     for i, x_i in enumerate(x):
         for j, x_j in enumerate(x):
             if x_i == x_j:
-                highlight_cell(i,j, color='red',transformer=transformer,ax=ax)
+                highlight_cell(i, j, color='red', transformer=transformer, ax=ax)
     for k in range(data.shape[0]):
             for j in range(data.shape[1]):
                 ax.text(j, k, f'{int(np.round(data[k, j]*100))}', ha='center', va='center', color='white')
-    alpha = 'ABCDEFGHIJKLMNOPQRSTUVW'
-    ax.set_xticks(np.arange(len(x)), [alpha[a] for a in x],fontsize=13)
-    ax.set_yticks(np.arange(len(x)), [alpha[a] for a in x],fontsize=13)
+
+    if(case_study == 3):
+        alpha = 'ABCDEFGHIJKLMNOPQRSTUVW'
+        ax.set_xticks(np.arange(len(x)), [alpha[a] for a in x], fontsize=13)
+        ax.set_yticks(np.arange(len(x)), [alpha[a] for a in x], fontsize=13)
+
     ax.tick_params(axis='x', which='both', bottom=False, top=True)
     ax.xaxis.tick_top()
 
@@ -176,10 +182,11 @@ selected_colors = tab20b_colors[1::2]
 # Create a ListedColormap using the selected colors
 custom_cmap = ListedColormap(selected_colors)
 
+with open(os.path.join(retrieve_dir, 'input_sequences.pkl'), "rb") as file:
+       input_sequences = cloudpickle.load(file)
 
-xs = [[1,1,2,2,3,3,1,1,1,1],
-      [11,12,3,12,12,12,1,7,7,1],
-      [14,13,12,11,10,9,8,7,6,5]]
+xs = [input_sequences[0][0].tolist(), input_sequences[0][1].tolist(), input_sequences[0][2].tolist()]
+print(xs)
 
 print(f"n_classes = ", n_classes)
 
@@ -216,6 +223,7 @@ norm = Normalize(vmin=0, vmax=1.0)
 cbar = fig.colorbar(im1, ax=axes, norm=norm)
 cbar.set_label('attention value',fontsize=12)
 plt.savefig(os.path.join(save_dir, f'tiny_example.pdf'))
+plt.clf()
 #plt.show()
 
 # ============== Results for reparam transformer ============== #
@@ -257,7 +265,8 @@ for model_type, g in results.groupby('model_type'):
     norm = Normalize(vmin=0, vmax=1.0)
     cbar = fig.colorbar(im1, ax=axes, norm=norm)
     cbar.set_label('attention value',fontsize=12)
-    plt.savefig(os.path.join(save_dir,f'../figures/run_{r}_training_comparison_{orig_trans.attention_input}.pdf'),bbox_inches='tight')
+    plt.savefig(os.path.join(save_dir, f'run_{r}_training_comparison_{orig_trans.attention_input}.pdf'),bbox_inches='tight')
+    plt.clf()
     #plt.show()
 
 
@@ -352,6 +361,57 @@ df = pd.DataFrame(df)
 df = df.groupby('model_type').agg(['mean','std'])
 print(df)
 
+# ============== Distribution of predicted tokens ============== #
+
+if(case_study == 1):
+
+    with open(os.path.join(retrieve_dir, 'sequences_to_predict.pkl'), "rb") as file:
+       sequences_to_predict = np.asarray(np.concatenate(cloudpickle.load(file)))
+    
+    distr_to_pred = [] 
+    for i in (vocab):
+        z = len(sequences_to_predict[np.where(sequences_to_predict == i)])
+        distr_to_pred.append(z)
+
+    # Compute the frequencies of each token
+    num_tok = sequences_to_predict.size
+    distr_to_pred = np.array(distr_to_pred) / num_tok
+
+    # Sort the frequencies in descending order
+    distr_to_pred[::-1].sort()
+    distr_to_pred = distr_to_pred.tolist()
+    width = 0.4
+    
+
+    for i in range(n_runs):
+        for model_type in model_types:
+            with open(os.path.join(retrieve_dir, f'predicted_sequences_run_{i}_model_{model_type}.pkl'), "rb") as file:
+                predicted_sequences = np.asarray(np.concatenate(cloudpickle.load(file)))
+
+           
+            distr_predicted = [] 
+            for j in (vocab):
+                z = len(predicted_sequences[np.where(predicted_sequences == j)])
+                distr_predicted.append(z)
+
+            # Compute the frequencies of each token
+            num_tok = sequences_to_predict.size
+            distr_predicted = np.array(distr_predicted) / num_tok
+
+            # Sort the frequencies in descending order
+            distr_predicted[::-1].sort()
+            distr_predicted = distr_predicted.tolist()
+
+            plt.bar(np.arange(vocab_size) - width/2, distr_to_pred, width, color=colors(2 % num_colors), label = 'Distribution tokens to predict')
+            plt.bar(np.arange(vocab_size) + width/2, distr_predicted, width, color=colors(0 % num_colors), label=f'Predicted distribution (Run {i} Model {model_type})')
+            plt.xlabel('Token Rank')
+            plt.ylabel('Frequency')
+            plt.title('Input vs Output Token Frequency Distributions')
+            plt.legend()
+            plt.savefig(os.path.join(save_dir, f'distr_predict_vs_label_run_{i}_{model_type}.pdf'))
+            plt.clf()
+
+
 results = pd.read_csv(os.path.join(retrieve_dir, 'reparameterized_transformers.csv'))
 results.train_losses = results.train_losses.apply(ast.literal_eval)
 results.val_losses = results.val_losses.apply(ast.literal_eval)
@@ -365,18 +425,19 @@ colors = plt.colormaps['viridis'].resampled(num_colors)  # You can change 'tab10
 
 for model_type, g in results.groupby('model_type'):
     acc = []
-    for i,row in g.iterrows():
+    for i, row in g.iterrows():
         idx += 1
         color = colors(idx % num_colors)
         plt.plot(row['val_acc'], color=color, label=f'Validation Acc Run{idx}')
         acc.append(row['val_acc'][-1])
     print(model_type, np.mean(acc), np.std(acc))
 
-    plt.xlabel('epochs')
-    plt.ylabel('accuracy')
+    plt.xlabel('Epochs')
+    plt.ylabel('Accuracy')
     plt.legend()
     plt.title(f"Reparametrized {model_type}")
     plt.savefig(os.path.join(save_dir, f'accuracy_reparametrized_{model_type}.pdf'))
+    plt.clf()
     #plt.show()
 
 
@@ -394,4 +455,5 @@ for model_type, g in results.groupby('model_type'):
     ax.legend()
     ax.set_title(f"Reparametrized {model_type}")
     plt.savefig(os.path.join(save_dir, f'loss_reparametrized_{model_type}.pdf'))
+    plt.clf()
     #plt.show()

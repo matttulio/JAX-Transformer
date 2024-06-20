@@ -143,7 +143,7 @@ for i in (dataset.vocab):
     distr.append(z)
 
 # Compute the frequencies of each token
-num_tok = np.count_nonzero(dataset.X)
+num_tok = dataset.X.size
 distr = np.array(distr) / num_tok
 
 # Sort the frequencies in descending order
