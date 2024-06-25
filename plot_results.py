@@ -13,8 +13,8 @@ from flax.traverse_util import flatten_dict
 
 
 
-case_study = 1  # Plot results for primitive NLP dataset for next token prediction
-#case_study = 2   # Plot results for primitive NLP dataset for summing task
+#case_study = 1  # Plot results for primitive NLP dataset for next token prediction
+case_study = 2   # Plot results for primitive NLP dataset for summing task
 #case_study = 3  # Plot results for Next Histogram Task dataset
 
 print("\n")
@@ -23,7 +23,7 @@ if(case_study == 1):
 
     num_samples = 50000
     sequence_length = 10
-    context_window = 10
+    context_window = 3
     vocab_size = round(sequence_length * 7.8125)
     vocab = list(range(vocab_size))
     embedding_dim = 50
@@ -50,14 +50,14 @@ elif(case_study == 2):
 
     num_samples = 50000
     sequence_length = 10
-    context_window = 3
+    context_window = 10
     vocab_size = round(sequence_length * 7.8125)
     vocab = list(range(vocab_size))
     embedding_dim = 50
     embedding_path = 'Datasets/glove/glove.6B.50d.txt'
     embedding_model = 'glove.6B.50d'
     seed = 42
-    distr_param = 2
+    distr_param = 1.1
     n_classes = 2
 
     rs = np.random.RandomState(seed)
@@ -124,6 +124,7 @@ for model_type, g in results.groupby('model_type'):
     plt.title(model_type)
     plt.savefig(os.path.join(save_dir, f'accuracy_{model_type}.pdf'))
     plt.clf()
+    plt.close()
     #plt.show()
 
 
@@ -142,38 +143,39 @@ for model_type, g in results.groupby('model_type'):
     ax.set_title(model_type)
     plt.savefig(os.path.join(save_dir, f'loss_{model_type}.pdf'))
     plt.clf()
+    plt.close()
     #plt.show()
 
 
-cmap_diff = LinearSegmentedColormap.from_list("grad_cmap", ["lightblue", "#d15f90"])
+cmap_diff = LinearSegmentedColormap.from_list("grad_cmap", ["cornflowerblue", "lightgray", "#d15f90"])
 
 idx = 0
-for run, g in results.groupby('run'):
 
+for run in results['run'].unique():
     fig, ax = plt.subplots()
-    val_losses_dict = {}
 
-    for model_type, row in g.iterrows():
-        val_losses_dict[model_type] = row['val_losses']
-
-
-    val_loss_diff = [a - b for a, b in zip(val_losses_dict[0], val_losses_dict[1])]
-    val_loss_diff[-1] = -1 * val_loss_diff[-1]
-
-    norm = Normalize(vmin=min(val_loss_diff), vmax=max(val_loss_diff))
+    # Filter for only_pos and only_sem for the current run
+    only_pos_val_loss = results[(results['run'] == run) & (results['model_type'] == 'only_pos')]['val_losses'].values[0]
+    only_sem_val_loss = results[(results['run'] == run) & (results['model_type'] == 'only_sem')]['val_losses'].values[0]
+    
+    # Calculate the difference between the accuracies
+    val_loss_diff = [pos - sem for pos, sem in zip(only_pos_val_loss, only_sem_val_loss)]
+    
+    limit = np.max((np.abs(np.max(val_loss_diff)), np.abs(np.min(val_loss_diff))))
+    #limit = 0.001
+    norm = Normalize(vmin=-1*limit, vmax=limit)
     colors_diff = [cmap_diff(norm(val)) for val in val_loss_diff]
 
     ax.plot(range(len(val_loss_diff)), val_loss_diff, linestyle='-', linewidth=1, color='gray')
     ax.scatter(range(len(val_loss_diff)), val_loss_diff, s=50, c=colors_diff)
 
     ax.set_xlabel('Epochs')
-    ax.set_ylabel('Validation Loss Difference')
+    ax.set_ylabel('Validation Loss Difference') 
     #ax.legend()
     ax.set_title('Difference Validation Losses')
     plt.savefig(os.path.join(save_dir, f'val_loss_difference_{model_types[0]}_{model_types[1]}_run_{run}.pdf'))
     plt.clf()
-
-
+    plt.close()
 
 # ============== Attention map ============== #
 def highlight_cell(x, y, color, ax):
@@ -196,7 +198,7 @@ def visualize_attention_matrix(x, transformer, ax, cmap='tab20b'):
         for i, x_i in enumerate(x):
             for j, x_j in enumerate(x):
                 if x_i == x_j:
-                    highlight_cell(i, j, color='red', transformer=transformer, ax=ax)
+                    highlight_cell(i, j, color='red', ax=ax)
         for k in range(data.shape[0]):
                 for j in range(data.shape[1]):
                     ax.text(j, k, f'{int(np.round(data[k, j]*100))}', ha='center', va='center', color='white')
@@ -316,6 +318,7 @@ cbar = fig.colorbar(im1, ax=axes, norm=norm)
 cbar.set_label('attention value',fontsize=12)
 plt.savefig(os.path.join(save_dir, f'tiny_example.pdf'))
 plt.clf()
+plt.close()
 #plt.show()
 
 
@@ -362,6 +365,7 @@ for model_type, g in results.groupby('model_type'):
     cbar.set_label('attention value',fontsize=12)
     plt.savefig(os.path.join(save_dir, f'run_{r}_training_comparison_{orig_trans.attention_input}.pdf'),bbox_inches='tight')
     plt.clf()
+    plt.close()
     #plt.show()
 
 
@@ -505,6 +509,7 @@ if(case_study == 1):
             plt.legend()
             plt.savefig(os.path.join(save_dir, f'distr_predict_vs_label_run_{i}_{model_type}.pdf'))
             plt.clf()
+            plt.close()
 
 
 results = pd.read_csv(os.path.join(retrieve_dir, 'reparameterized_transformers.csv'))
@@ -533,6 +538,7 @@ for model_type, g in results.groupby('model_type'):
     plt.title(f"Reparametrized {model_type}")
     plt.savefig(os.path.join(save_dir, f'accuracy_reparametrized_{model_type}.pdf'))
     plt.clf()
+    plt.close()
     #plt.show()
 
 
@@ -551,4 +557,5 @@ for model_type, g in results.groupby('model_type'):
     ax.set_title(f"Reparametrized {model_type}")
     plt.savefig(os.path.join(save_dir, f'loss_reparametrized_{model_type}.pdf'))
     plt.clf()
+    plt.close()
     #plt.show()

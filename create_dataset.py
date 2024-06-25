@@ -12,19 +12,16 @@ print("\n")
 
 if(desire == 1):
 
-    num_samples = 50000
+    num_samples = 100000
     sequence_length = 10
-    context_window = 3
+    context_window = 10
     vocab_size = round(sequence_length * 7.8125)
     vocab = list(range(vocab_size))
     embedding_dim = 50
     embedding_path = 'Datasets/glove/glove.6B.50d.txt'
     embedding_model = 'glove.6B.50d'
     seed = 42
-    distr_param = 2
-
-    print("Building Primitive NLP Next Token Prediction Dataset...")
-    dataset = PrimitiveNLP_NTP(num_samples, sequence_length, context_window, vocab, embedding_dim, embedding_path, seed, distr_param)
+    distr_param = 1.1
 
     if(embedding_path == None):
         embedding_model = 'Rand'
@@ -38,10 +35,14 @@ if(desire == 1):
     print(f"seed = {seed}, distribution's parameter = {distr_param}")
     print("\n")
 
+    print("Building Primitive NLP Next Token Prediction Dataset...")
+    dataset = PrimitiveNLP_NTP(num_samples, sequence_length, context_window, vocab, embedding_dim, embedding_path, seed, distr_param)
+
+
 
 elif(desire == 2):
 
-    num_samples = 50000
+    num_samples = 100000
     sequence_length = 10
     context_window = 10
     vocab_size = round(sequence_length * 7.8125)
@@ -50,10 +51,7 @@ elif(desire == 2):
     embedding_path = 'Datasets/glove/glove.6B.50d.txt'
     embedding_model = 'glove.6B.50d'
     seed = 42
-    distr_param = 2
-
-    print("Building Primitive NLP Dataset...")
-    dataset = PrimitiveNLP(num_samples, sequence_length, context_window, vocab, embedding_dim, embedding_path, seed, distr_param)
+    distr_param = 1.1
 
     if(embedding_path == None):
         embedding_model = 'Rand'
@@ -67,6 +65,10 @@ elif(desire == 2):
     print(f"seed = {seed}, distribution's parameter = {distr_param}")
     print("\n")
 
+    print("Building Primitive NLP Dataset...")
+    dataset = PrimitiveNLP(num_samples, sequence_length, context_window, vocab, embedding_dim, embedding_path, seed, distr_param)
+
+
 
 elif(desire == 3):
 
@@ -75,14 +77,14 @@ elif(desire == 3):
     vocab_size = 15
     seed = 42
 
-    print("Building Next Histogram Dataset...")
-    dataset = NextHistogramDataset(sequence_length, vocab_size, num_samples, seed)
-
     save_path = "Datasets/Data"
     file_name = f"NextHistogramDataset_n_smpl{num_samples}__seq_len{sequence_length}__v_size{vocab_size}__seed{seed}.pkl"
 
     print(f"number of samples = {num_samples}, sequence lenght = {sequence_length}, vocabulary size = {vocab_size}, seed = {seed}")
     print("\n")
+
+    print("Building Next Histogram Dataset...")
+    dataset = NextHistogramDataset(sequence_length, vocab_size, num_samples, seed)
 
 if not os.path.exists(save_path):
     os.makedirs(save_path)

@@ -29,11 +29,11 @@ print("\n")
 distr = []
 
 vocab_y = np.unique(dataset.y)  # Convert y to a set to get unique values, then convert back to list
-total_sequences = dataset.y.shape[0] * dataset.y.shape[1]  # Assuming dataset.seq_len represents the length of each sequence
+total_tokens = dataset.y.size  # Assuming dataset.seq_len represents the length of each sequence
 
 for i in vocab_y:
     h = len(dataset.y[np.where(dataset.y == i)])  # Count occurrences of each value in y
-    h = (h / total_sequences) * 100  # Calculate the percentage
+    h = (h / total_tokens) * 100  # Calculate the percentage
     distr.append(h)
 
 plt.bar(vocab_y, distr, color='skyblue')
@@ -47,7 +47,7 @@ distr = []
 dataset.X = np.array(dataset.X)
 for i in (vocab):
     z = len(dataset.X[np.where(dataset.X == i)])
-    z = (z / ((len(dataset.X) * dataset.seq_len))) * 100
+    z = (z / ((dataset.X.size))) * 100
     distr.append(z)
 
 plt.bar(vocab, distr, color='skyblue')
