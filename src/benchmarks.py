@@ -131,7 +131,7 @@ class PrimitiveNLP(Dataset):
 
             sequence = []  # Initialise the seq to an empty list
             length = 0  # Variable for the length of the sequence
-            stuck = 0  # Counter that establish if the algorithm in stuck
+            #stuck = 0  # Counter that establish if the algorithm in stuck
             
             while(length < self.seq_len):  # While loop that generates the sequence
                 
@@ -182,14 +182,13 @@ class PrimitiveNLP(Dataset):
                             
                     
                                   
-                stuck += 1
+                # stuck += 1
                 
-                # I assumed that if took more then stuck limit iterations to build the sequence, then the seq is cursed
-                if(stuck == stuck_limit):
-                    stuck = 0
-                    sequence = []
-                    length = 0
-                    combined_embedding = 0
+                # # I assumed that if took more then stuck limit iterations to build the sequence, then the seq is cursed
+                # if(stuck == stuck_limit):
+                #     stuck = 0
+                #     sequence = []
+                #     length = 0
                     
                     
             # Check if the built sequence is already in the dataset
@@ -325,7 +324,7 @@ class PrimitiveNLP_NTP(Dataset):
 
             sequence = []  # Initialise the seq to an empty list
             length = 0  # Variable for the length of the sequence
-            stuck = 0  # Counter that establish if the algorithm in stuck
+            #stuck = 0  # Counter that establish if the algorithm in stuck
             
             while(length < self.seq_len):  # While loop that generates the sequence
                 
@@ -374,14 +373,13 @@ class PrimitiveNLP_NTP(Dataset):
                     sequence.append(next_token)
                     length += 1
                                   
-                stuck += 1
+                # stuck += 1
                 
-                # I assumed that if took more then stuck limit iterations to build the sequence, then the seq is cursed
-                if(stuck == stuck_limit):
-                    stuck = 0
-                    sequence = []
-                    length = 0
-                    combined_embedding = 0
+                # # I assumed that if took more then stuck limit iterations to build the sequence, then the seq is cursed
+                # if(stuck == stuck_limit):
+                #     stuck = 0
+                #     sequence = []
+                #     length = 0
                     
                     
             # Check if the built sequence is already in the dataset
