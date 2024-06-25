@@ -11,7 +11,7 @@ print("PROPERTIES OF THE PRIMITIVE NLP NTP DATASET")
 print("\n")
 
 data_dir = 'Datasets/Data'
-file_name = 'primitive_NLP_NTP_dataset_n_smpl500__seq_len10__cont_win10__'\
+file_name = 'primitive_NLP_NTP_dataset_n_smpl50000__seq_len10__cont_win10__'\
         'v_size78__emb_dim50__emb_typeglove.6B.50d__seed42__d_par1.1.pkl'
 
 data_path = os.path.join(data_dir, file_name)
@@ -70,7 +70,7 @@ def func(x, k, b):
 plt.plot(x_values, distr, '-', color='blue', label = 'Observed distribution' )
 
 # Fit the function to the data
-popt, pcov = curve_fit(func, x_values, distr, (2.7, 1))
+popt, pcov = curve_fit(func, x_values, distr, (1, 2.7))
 
 # Plot the fitted function
 plt.plot(x_values, func(x_values, *popt), color='skyblue', label=f'Zipf`s Law:  k={popt[0]:.2f}, {popt[1]:.2f}')

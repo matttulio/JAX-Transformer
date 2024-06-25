@@ -12,7 +12,7 @@ print("\n")
 
 if(desire == 1):
 
-    num_samples = 100000
+    num_samples = 50000
     sequence_length = 10
     context_window = 10
     vocab_size = round(sequence_length * 7.8125)
@@ -42,7 +42,7 @@ if(desire == 1):
 
 elif(desire == 2):
 
-    num_samples = 100000
+    num_samples = 50000
     sequence_length = 10
     context_window = 10
     vocab_size = round(sequence_length * 7.8125)

@@ -96,9 +96,9 @@ class PrimitiveNLP(Dataset):
                 lines = f.readlines()
 
                 # Count the number of lines in the list
-                num_rows = len(lines)
-
-                step = num_rows // self.vocab_size
+                #num_rows = len(lines)
+                #step = num_rows // self.vocab_size
+                step = 1
                 for i, line in enumerate(lines):
                     if i >= self.vocab_size * step:  # Break if enough vectors are read
                         break
@@ -117,8 +117,8 @@ class PrimitiveNLP(Dataset):
 
         # Process for standard positional encoding as Attention is All You Need
         max_pos = sequence_length
-        position_enc = torch.tensor([[torch.sin(torch.tensor(pos / (10000 ** (i // 2 * 2.0 / self.embedding_dim)), dtype=torch.float)) if i % 2 == 0 else torch.cos(torch.tensor(pos / (10000 ** (i // 2 * 2.0 / self.embedding_dim)), dtype=torch.float)) for i in range(self.embedding_dim)] for pos in range(max_pos)], dtype=torch.float)
-
+        #position_enc = torch.tensor([[torch.sin(torch.tensor(pos / (10000 ** (i // 2 * 2.0 / self.embedding_dim)), dtype=torch.float)) if i % 2 == 0 else torch.cos(torch.tensor(pos / (10000 ** (i // 2 * 2.0 / self.embedding_dim)), dtype=torch.float)) for i in range(self.embedding_dim)] for pos in range(max_pos)], dtype=torch.float)
+        position_enc = torch.tensor([[1 / (max_pos - pos) for _ in range(embedding_dim)] for pos in range(max_pos)], dtype=torch.float)
         
         stuck_limit = self.seq_len * 5  # Number of iterations that determines if the sequence is cursed, and hence should be dropped
         
@@ -142,7 +142,6 @@ class PrimitiveNLP(Dataset):
                     while True:
                         # Sample from the distribution
                         number = rs.zipf(distr_param)
-
                         # Check if the number is within the range
                         if number < self.vocab_size:
                             break  # Exit the loop if the number is within the range
@@ -154,11 +153,11 @@ class PrimitiveNLP(Dataset):
                 else:  #if it is another token then choose it from similarity
                     
                     # Combine token and positional embeddings 
-                    combined_embedding = 0
+                    combined_embedding = torch.zeros_like(embedding_matrix[0])
 
                     for i in range(length - 1, max(length - context_window - 1, -1), -1):
                         token_index = self.vocab.index(sequence[i])
-                        combined_embedding += embedding_matrix[token_index] + position_enc[i]
+                        combined_embedding += torch.matmul(embedding_matrix[token_index], position_enc[i])
 
                             
                         
@@ -167,21 +166,15 @@ class PrimitiveNLP(Dataset):
                     # Calculate similarity with previous tokens and select the most similar one
                     similarities = [torch.dot(embedding_matrix[k], combined_embedding) for k in range(self.vocab_size)]
                     similarities = torch.tensor([similarities])
-                    _, next_token_i = torch.topk(similarities, self.vocab_size)
-                
-                
-                    # Stochastic step
-                    while True:
-                        # Sample from the distribution
-                        number = rs.zipf(distr_param)
+                    probs = nn.functional.softmax(similarities[0], dim=0)
+                    probs = probs.numpy()
 
-                        # Check if the number is within the range
-                        if number < self.vocab_size:
-                            break  # Exit the loop if the number is within the range
-                    
-                                
-                    next_token = self.vocab[next_token_i[0][number - 1]]
-                        
+                    for k in range(length):
+                        probs[vocab.index(sequence[k])] = 0
+
+                    probs /= probs.sum()
+                   
+                    next_token = rs.choice(vocab, p=probs)
                     
                     sequence.append(next_token)
                     length += 1
@@ -297,9 +290,10 @@ class PrimitiveNLP_NTP(Dataset):
                 lines = f.readlines()
 
                 # Count the number of lines in the list
-                num_rows = len(lines)
 
-                step = num_rows // self.vocab_size
+                #num_rows = len(lines)
+                #step = num_rows // self.vocab_size
+                step = 1
                 for i, line in enumerate(lines):
                     if i >= self.vocab_size * step:  # Break if enough vectors are read
                         break
@@ -316,8 +310,8 @@ class PrimitiveNLP_NTP(Dataset):
 
         # Process for standard positional encoding as Attention is All You Need
         max_pos = sequence_length
-        position_enc = torch.tensor([[torch.sin(torch.tensor(pos / (10000 ** (i // 2 * 2.0 / self.embedding_dim)), dtype=torch.float)) if i % 2 == 0 else torch.cos(torch.tensor(pos / (10000 ** (i // 2 * 2.0 / self.embedding_dim)), dtype=torch.float)) for i in range(self.embedding_dim)] for pos in range(max_pos)], dtype=torch.float)
-
+        #position_enc = torch.tensor([[torch.sin(torch.tensor(pos / (10000 ** (i // 2 * 2.0 / self.embedding_dim)), dtype=torch.float)) if i % 2 == 0 else torch.cos(torch.tensor(pos / (10000 ** (i // 2 * 2.0 / self.embedding_dim)), dtype=torch.float)) for i in range(self.embedding_dim)] for pos in range(max_pos)], dtype=torch.float)
+        position_enc = torch.tensor([[1 / (max_pos - pos) for _ in range(embedding_dim)] for pos in range(max_pos)], dtype=torch.float)
     
         stuck_limit = self.seq_len * 5  # Number of iterations that determines if the sequence is cursed, and hence should be dropped
         
@@ -366,26 +360,18 @@ class PrimitiveNLP_NTP(Dataset):
                     # Calculate similarity with previous tokens and select the most similar one
                     similarities = [torch.dot(embedding_matrix[k], combined_embedding) for k in range(self.vocab_size)]
                     similarities = torch.tensor([similarities])
-                    _, next_token_i = torch.topk(similarities, self.vocab_size)
-                
-                
-                    # Stochastic step
-                    while True:
-                        # Sample from the distribution
-                        number = rs.zipf(distr_param)
+                    probs = nn.functional.softmax(similarities[0], dim=0)
+                    probs = probs.numpy()
 
-                        # Check if the number is within the range
-                        if number < self.vocab_size:
-                            break  # Exit the loop if the number is within the range
-                    
-                                
-                    next_token = self.vocab[next_token_i[0][number - 1]]
+                    for k in range(length):
+                        probs[vocab.index(sequence[k])] = 0
+
+                    probs /= probs.sum()
+                   
+                    next_token = rs.choice(vocab, p=probs)
                         
-                    
                     sequence.append(next_token)
                     length += 1
-                            
-                    
                                   
                 stuck += 1
                 
