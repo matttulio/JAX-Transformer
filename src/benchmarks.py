@@ -116,7 +116,7 @@ class PrimitiveNLP(Dataset):
         self.y = []  # List for the labels
 
         # Process for standard positional encoding as Attention is All You Need
-        max_pos = sequence_length
+        max_pos = context_window
         #position_enc = torch.tensor([[torch.sin(torch.tensor(pos / (10000 ** (i // 2 * 2.0 / self.embedding_dim)), dtype=torch.float)) if i % 2 == 0 else torch.cos(torch.tensor(pos / (10000 ** (i // 2 * 2.0 / self.embedding_dim)), dtype=torch.float)) for i in range(self.embedding_dim)] for pos in range(max_pos)], dtype=torch.float)
         position_enc = torch.tensor([[1 / (max_pos - pos) for _ in range(embedding_dim)] for pos in range(max_pos)], dtype=torch.float)
         
@@ -154,10 +154,11 @@ class PrimitiveNLP(Dataset):
                     
                     # Combine token and positional embeddings 
                     combined_embedding = torch.zeros_like(embedding_matrix[0])
-
+                    j = context_window-1
                     for i in range(length - 1, max(length - context_window - 1, -1), -1):
                         token_index = self.vocab.index(sequence[i])
-                        combined_embedding += torch.matmul(embedding_matrix[token_index], position_enc[i])
+                        combined_embedding += torch.matmul(embedding_matrix[token_index], position_enc[j])
+                        j -= 1
 
                             
                         
@@ -309,10 +310,10 @@ class PrimitiveNLP_NTP(Dataset):
         n_gen_seqs = 0  # Total Number of generated sequences
 
         # Process for standard positional encoding as Attention is All You Need
-        max_pos = sequence_length
+        max_pos = context_window
         #position_enc = torch.tensor([[torch.sin(torch.tensor(pos / (10000 ** (i // 2 * 2.0 / self.embedding_dim)), dtype=torch.float)) if i % 2 == 0 else torch.cos(torch.tensor(pos / (10000 ** (i // 2 * 2.0 / self.embedding_dim)), dtype=torch.float)) for i in range(self.embedding_dim)] for pos in range(max_pos)], dtype=torch.float)
         position_enc = torch.tensor([[1 / (max_pos - pos) for _ in range(embedding_dim)] for pos in range(max_pos)], dtype=torch.float)
-    
+     
         stuck_limit = self.seq_len * 5  # Number of iterations that determines if the sequence is cursed, and hence should be dropped
         
         
@@ -347,12 +348,12 @@ class PrimitiveNLP_NTP(Dataset):
                 else:  #if it is another token then choose it from similarity
                     
                     # Combine token and positional embeddings 
-                    combined_embedding = 0
-
+                    combined_embedding = torch.zeros_like(embedding_matrix[0])
+                    j = context_window-1
                     for i in range(length - 1, max(length - context_window - 1, -1), -1):
                         token_index = self.vocab.index(sequence[i])
-                        combined_embedding += embedding_matrix[token_index] + position_enc[i]
-
+                        combined_embedding += torch.matmul(embedding_matrix[token_index], position_enc[j])
+                        j -= 1
                             
                         
                     #combined_embedding = combined_embedding + position_enc[length - 1]
