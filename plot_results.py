@@ -14,8 +14,8 @@ from flax.traverse_util import flatten_dict
 
 
 #case_study = 1  # Plot results for primitive NLP dataset for next token prediction
-case_study = 2   # Plot results for primitive NLP dataset for summing task
-#case_study = 3  # Plot results for Next Histogram Task dataset
+#case_study = 2   # Plot results for primitive NLP dataset for summing task
+case_study = 3  # Plot results for Next Histogram Task dataset
 
 print("\n")
 
@@ -23,14 +23,14 @@ if(case_study == 1):
 
     num_samples = 50000
     sequence_length = 10
-    context_window = 3
+    context_window = 10
     vocab_size = round(sequence_length * 7.8125)
     vocab = list(range(vocab_size))
     embedding_dim = 50
     embedding_path = 'Datasets/glove/glove.6B.50d.txt'
     embedding_model = 'glove.6B.50d'
     seed = 42
-    distr_param = 2
+    distr_param = 1.1
     n_classes = vocab_size + 1
 
     rs = np.random.RandomState(seed)
@@ -50,7 +50,7 @@ elif(case_study == 2):
 
     num_samples = 50000
     sequence_length = 10
-    context_window = 10
+    context_window = 3
     vocab_size = round(sequence_length * 7.8125)
     vocab = list(range(vocab_size))
     embedding_dim = 50
@@ -110,13 +110,21 @@ num_colors = n_runs
 colors = plt.colormaps['viridis'].resampled(num_colors)  # You can change 'tab10' to other colormaps
 
 for model_type, g in results.groupby('model_type'):
-    acc = []
-    for i,row in g.iterrows():
+    all_acc = []
+    for i, row in g.iterrows():
         idx += 1
-        color = colors(idx % num_colors)
-        plt.plot(row['val_acc'], color=color, label=f'Validation Acc Run {idx}')
-        acc.append(row['val_acc'][-1])
-    print(model_type, np.mean(acc), np.std(acc))
+        all_acc.append(row['val_acc'])
+    
+    # Calculate mean and standard deviation of accuracies
+    mean_acc = np.mean(all_acc, axis=0)
+    std_acc = np.std(all_acc, axis=0)
+
+    color = colors(idx % num_colors)
+    plt.plot(mean_acc, color=color, label=f'Mean Validation Acc')
+    plt.fill_between(range(len(mean_acc)), mean_acc - std_acc, mean_acc + std_acc, color=color, alpha=0.2)
+    plt.axhline(y=0.8919672924086934, color='r', linestyle='--', label='Baseline')
+
+    print(model_type, np.mean(mean_acc), np.std(mean_acc))
 
     plt.xlabel('epochs')
     plt.ylabel('accuracy')
@@ -126,17 +134,37 @@ for model_type, g in results.groupby('model_type'):
     plt.clf()
     plt.close()
     #plt.show()
+#exit()
 
 
 # ============== Val and Train loss against epochs ============== #
 idx = 0
 for model_type, g in results.groupby('model_type'):
-    fig, ax = plt.subplots()
+    all_train_losses = []
+    all_val_losses = []
+    
     for i, row in g.iterrows():
         idx += 1
-        color = colors(idx % num_colors)
-        ax.plot(row['train_losses'], color=color, label=f'Train Run {idx}')
-        ax.plot(row['val_losses'], color=color, label=f'Val Run {idx}')
+        all_train_losses.append(row['train_losses'])
+        all_val_losses.append(row['val_losses'])
+    
+    # Calculate mean and standard deviation of losses
+    mean_train_losses = np.mean(all_train_losses, axis=0)
+    std_train_losses = np.std(all_train_losses, axis=0)
+    mean_val_losses = np.mean(all_val_losses, axis=0)
+    std_val_losses = np.std(all_val_losses, axis=0)
+
+    fig, ax = plt.subplots()
+    color = colors(idx % num_colors)
+    
+    # Plot mean and std for train losses
+    ax.plot(mean_train_losses, color=color, label='Mean Train Loss')
+    ax.fill_between(range(len(mean_train_losses)), mean_train_losses - std_train_losses, mean_train_losses + std_train_losses, color=color, alpha=0.2)
+    
+    # Plot mean and std for validation losses
+    ax.plot(mean_val_losses, color=colors((idx + 2) % num_colors), label='Mean Val Loss')
+    ax.fill_between(range(len(mean_val_losses)), mean_val_losses - std_val_losses, mean_val_losses + std_val_losses, color=colors((idx + 2) % num_colors), alpha=0.2)
+    
     ax.set_xlabel('Epochs')
     ax.set_ylabel('Loss')
     ax.legend()
@@ -151,32 +179,46 @@ cmap_diff = LinearSegmentedColormap.from_list("grad_cmap", ["cornflowerblue", "l
 
 idx = 0
 
+all_val_loss_diffs = []
+
 for run in results['run'].unique():
-    fig, ax = plt.subplots()
-
     # Filter for only_pos and only_sem for the current run
-    only_pos_val_loss = results[(results['run'] == run) & (results['model_type'] == 'only_pos')]['val_losses'].values[0]
-    only_sem_val_loss = results[(results['run'] == run) & (results['model_type'] == 'only_sem')]['val_losses'].values[0]
+    only_pos_val_loss = results[(results['run'] == run) & (results['model_type'] == 'only_pos')]['val_losses'].values
+    only_sem_val_loss = results[(results['run'] == run) & (results['model_type'] == 'only_sem')]['val_losses'].values
     
-    # Calculate the difference between the accuracies
-    val_loss_diff = [pos - sem for pos, sem in zip(only_pos_val_loss, only_sem_val_loss)]
-    
-    limit = np.max((np.abs(np.max(val_loss_diff)), np.abs(np.min(val_loss_diff))))
-    #limit = 0.001
-    norm = Normalize(vmin=-1*limit, vmax=limit)
-    colors_diff = [cmap_diff(norm(val)) for val in val_loss_diff]
+    if len(only_pos_val_loss) > 0 and len(only_sem_val_loss) > 0:
+        only_pos_val_loss = only_pos_val_loss[0]
+        only_sem_val_loss = only_sem_val_loss[0]
 
-    ax.plot(range(len(val_loss_diff)), val_loss_diff, linestyle='-', linewidth=1, color='gray')
-    ax.scatter(range(len(val_loss_diff)), val_loss_diff, s=50, c=colors_diff)
+        # Calculate the difference between the accuracies
+        val_loss_diff = [pos - sem for pos, sem in zip(only_pos_val_loss, only_sem_val_loss)]
+        all_val_loss_diffs.append(val_loss_diff)
 
-    ax.set_xlabel('Epochs')
-    ax.set_ylabel('Validation Loss Difference') 
-    #ax.legend()
-    ax.set_title('Difference Validation Losses')
-    plt.savefig(os.path.join(save_dir, f'val_loss_difference_{model_types[0]}_{model_types[1]}_run_{run}.pdf'))
-    plt.clf()
-    plt.close()
+# Calculate mean and standard deviation of differences
+mean_val_loss_diff = np.mean(all_val_loss_diffs, axis=0)
+std_val_loss_diff = np.std(all_val_loss_diffs, axis=0)
 
+# Normalize differences for coloring
+limit = np.min((np.abs(np.max(mean_val_loss_diff)), np.abs(np.min(mean_val_loss_diff))))
+print(limit)
+norm = Normalize(vmin=-0.001 * limit, vmax=0.001*limit)
+colors_diff = [cmap_diff(norm(val)) for val in mean_val_loss_diff]
+
+# Plotting
+fig, ax = plt.subplots()
+ax.plot(range(len(mean_val_loss_diff)), mean_val_loss_diff, linestyle='-', linewidth=1, color='gray')
+ax.fill_between(range(len(mean_val_loss_diff)), mean_val_loss_diff - std_val_loss_diff, mean_val_loss_diff + std_val_loss_diff, color='blueviolet', alpha=0.1)
+ax.scatter(range(len(mean_val_loss_diff)), mean_val_loss_diff, s=50, c=colors_diff)
+
+ax.set_xlabel('Epochs')
+ax.set_ylabel('Validation Loss Difference')
+ax.set_title('Mean Difference in Validation Losses')
+#ax.set_xlim([0.6, 15])
+#ax.set_ylim([-0.0001, 0.0001])
+plt.savefig(os.path.join(save_dir, 'mean_val_loss_difference_only_pos_only_sem.pdf'))
+plt.clf()
+plt.close()
+exit()
 # ============== Attention map ============== #
 def highlight_cell(x, y, color, ax):
     # Given a coordinate (x,y), highlight the corresponding cell using a colored frame in the ac
@@ -226,9 +268,10 @@ def visualize_attention_matrix(x, transformer, ax, cmap='tab20b'):
                 lines = f.readlines()
 
                 # Count the number of lines in the list
-                num_rows = len(lines)
+                #num_rows = len(lines)
 
-                step = num_rows // vocab_size
+                #step = num_rows // vocab_size
+                step = 1
                 for i, line in enumerate(lines):
                     if i >= vocab_size * step:  # Break if enough vectors are read
                         break
@@ -239,24 +282,33 @@ def visualize_attention_matrix(x, transformer, ax, cmap='tab20b'):
                     
             embedding_matrix = embedding_vectors
 
-        max_pos = sequence_length
-        position_enc = torch.tensor([[torch.sin(torch.tensor(pos / (10000 ** (i // 2 * 2.0 / embedding_dim)), dtype=torch.float)) if i % 2 == 0 else torch.cos(torch.tensor(pos / (10000 ** (i // 2 * 2.0 / embedding_dim)), dtype=torch.float)) for i in range(embedding_dim)] for pos in range(max_pos)], dtype=torch.float)
+        max_pos = context_window
+        position_enc = torch.tensor([[1 / (max_pos - pos) for _ in range(embedding_dim)] for pos in range(max_pos)], dtype=torch.float)
 
         highlight_cell(0, 0, color='white', ax=ax)
-        for i in range(sequence_length-2, 0, -1):
+        for length in range(sequence_length-1, 0, -1):
+           
+            token_index = vocab.index(x[length])
+            token_embedding = embedding_matrix[token_index]
 
-            token_index = vocab.index(x[i+1])
-            token_embedding = embedding_matrix[token_index] + position_enc[i+1]
+            j = context_window-1
+            similarities = []
+            for i in range(length, max(length - context_window, -1), -1):
+            
+                token_index = vocab.index(x[i-1])
+                similarities.append(torch.dot(embedding_matrix[token_index] * position_enc[j], token_embedding).item())
+                j -= 1
 
-            similarities = [torch.dot(embedding_matrix[vocab.index(x[k])] + position_enc[k], token_embedding) for k in range(i)]
-            similarities = torch.tensor([similarities])
-            _, next_token_i = torch.topk(similarities, i)
+            #similarities = [torch.dot(torch.matmul(embedding_matrix[vocab.index(x[k])], position_enc[k - max(i-context_window, 0)]), token_embedding) for k in range(i, max(i-context_window, 0), -1)]
+            similarities = torch.tensor(similarities)\
 
-            if(next_token_i[0][0] == next_token_i[0][-1]):
-                highlight_cell(next_token_i[0][0], i, color='white', ax=ax)
+            _, most_similar_tokens_i = torch.topk(similarities, min(context_window, length))
+
+            if(most_similar_tokens_i[0] == most_similar_tokens_i[-1]):
+                highlight_cell(length - 1 - most_similar_tokens_i[0], length-1, color='white', ax=ax)
             else:
-                highlight_cell(next_token_i[0][0], i, color='green', ax=ax)
-                highlight_cell(next_token_i[0][-1], i, color='red', ax=ax)
+                highlight_cell(length - 1 - most_similar_tokens_i[0], length-1, color='green', ax=ax)
+                highlight_cell(length - 1 - most_similar_tokens_i[-1], length-1, color='red', ax=ax)
 
         for k in range(data.shape[0]):
             for j in range(data.shape[1]):
@@ -312,7 +364,6 @@ for i, transformer in enumerate(transformers):
     axes[0,j].set_title(f"Example Sequence #{j+1}",fontsize=10)
     visualize_attention_matrix(x, transformer, axes[i,j], cmap=cmap)
 
-
 norm = Normalize(vmin=0, vmax=1.0)
 cbar = fig.colorbar(im1, ax=axes, norm=norm)
 cbar.set_label('attention value',fontsize=12)
@@ -320,7 +371,6 @@ plt.savefig(os.path.join(save_dir, f'tiny_example.pdf'))
 plt.clf()
 plt.close()
 #plt.show()
-
 
 
 # ============== Results for reparam transformer ============== #
@@ -467,49 +517,63 @@ if(case_study == 1):
     with open(os.path.join(retrieve_dir, 'sequences_to_predict.pkl'), "rb") as file:
        sequences_to_predict = np.asarray(np.concatenate(cloudpickle.load(file)))
     
-    distr_to_pred = [] 
-    for i in (vocab):
-        z = len(sequences_to_predict[np.where(sequences_to_predict == i)])
+    distr_to_pred = []
+    for i in vocab:
+        z = len(sequences_to_predict[sequences_to_predict == i])
         distr_to_pred.append(z)
 
-    # Compute the frequencies of each token
     num_tok = sequences_to_predict.size
     distr_to_pred = np.array(distr_to_pred) / num_tok
-
-    # Sort the frequencies in descending order
     distr_to_pred[::-1].sort()
     distr_to_pred = distr_to_pred.tolist()
     width = 0.4
-    
+
+    # Initialize a dictionary to collect distributions
+    all_distr_predicted = {model_type: [] for model_type in model_types}
 
     for i in range(n_runs):
         for model_type in model_types:
             with open(os.path.join(retrieve_dir, f'predicted_sequences_run_{i}_model_{model_type}.pkl'), "rb") as file:
                 predicted_sequences = np.asarray(np.concatenate(cloudpickle.load(file)))
 
-           
-            distr_predicted = [] 
-            for j in (vocab):
-                z = len(predicted_sequences[np.where(predicted_sequences == j)])
+            distr_predicted = []
+            for j in vocab:
+                z = len(predicted_sequences[predicted_sequences == j])
                 distr_predicted.append(z)
 
-            # Compute the frequencies of each token
             num_tok = sequences_to_predict.size
             distr_predicted = np.array(distr_predicted) / num_tok
-
-            # Sort the frequencies in descending order
             distr_predicted[::-1].sort()
             distr_predicted = distr_predicted.tolist()
 
-            plt.bar(np.arange(vocab_size) - width/2, distr_to_pred, width, color=colors(2 % num_colors), label = 'Distribution tokens to predict')
-            plt.bar(np.arange(vocab_size) + width/2, distr_predicted, width, color=colors(0 % num_colors), label=f'Predicted distribution (Run {i} Model {model_type})')
-            plt.xlabel('Token Rank')
-            plt.ylabel('Frequency')
-            plt.title('Input vs Output Token Frequency Distributions')
-            plt.legend()
-            plt.savefig(os.path.join(save_dir, f'distr_predict_vs_label_run_{i}_{model_type}.pdf'))
-            plt.clf()
-            plt.close()
+            all_distr_predicted[model_type].append(distr_predicted)
+
+    # Calculate mean and standard deviation for each model type
+    mean_distr_predicted = {model_type: np.mean(all_distr_predicted[model_type], axis=0) for model_type in model_types}
+    std_distr_predicted = {model_type: np.std(all_distr_predicted[model_type], axis=0) for model_type in model_types}
+
+    # Plotting the distributions for each model type
+    for model_type in model_types:
+        fig, ax = plt.subplots()
+
+        # Plot the true distribution
+        ax.bar(np.arange(vocab_size) - width / 2, distr_to_pred, width, color=colors(2 % n_runs), label='Distribution tokens to predict')
+
+        mean_values = mean_distr_predicted[model_type]
+        std_values = std_distr_predicted[model_type]
+
+        # Plot the predicted mean distribution
+        ax.bar(np.arange(vocab_size) + width / 2, mean_values, width, yerr=std_values, capsize=5, color=colors(0 % n_runs), label=f'Mean Predicted Distribution ({model_type})')
+
+        ax.set_xlabel('Token Rank')
+        ax.set_ylabel('Frequency')
+        ax.set_title(f'Input vs Output Token Frequency Distributions ({model_type})')
+        ax.legend()
+
+        plt.savefig(os.path.join(save_dir, f'mean_distr_predict_vs_label_{model_type}.pdf'))
+        plt.clf()
+        plt.close()
+
 
 
 results = pd.read_csv(os.path.join(retrieve_dir, 'reparameterized_transformers.csv'))
@@ -518,19 +582,21 @@ results.val_losses = results.val_losses.apply(ast.literal_eval)
 results.val_acc = results.val_acc.apply(ast.literal_eval)
 
 # ============== Accuracy reparametrized model ============== #
-idx = 0
-num_colors = np.max(results['run']) + 1
-colors = plt.colormaps['viridis'].resampled(num_colors)  # You can change 'tab10' to other colormaps
-
-
 for model_type, g in results.groupby('model_type'):
-    acc = []
+    val_acc_all_runs = []
+
     for i, row in g.iterrows():
-        idx += 1
-        color = colors(idx % num_colors)
-        plt.plot(row['val_acc'], color=color, label=f'Validation Acc Run{idx}')
-        acc.append(row['val_acc'][-1])
-    print(model_type, np.mean(acc), np.std(acc))
+        val_acc_all_runs.append(row['val_acc'])
+
+    val_acc_all_runs = np.array(val_acc_all_runs)
+    mean_val_acc = np.mean(val_acc_all_runs, axis=0)
+    std_val_acc = np.std(val_acc_all_runs, axis=0)
+
+    epochs = range(len(mean_val_acc))
+    color = colors(0 % num_colors)
+
+    plt.plot(epochs, mean_val_acc, color=color, label='Mean Validation Accuracy')
+    plt.fill_between(epochs, mean_val_acc - std_val_acc, mean_val_acc + std_val_acc, color=color, alpha=0.3)
 
     plt.xlabel('Epochs')
     plt.ylabel('Accuracy')
@@ -541,16 +607,32 @@ for model_type, g in results.groupby('model_type'):
     plt.close()
     #plt.show()
 
-
 # ============== Train and Val loss reparametrized model ============== #
-idx = 0
 for model_type, g in results.groupby('model_type'):
-    fig, ax = plt.subplots()
+    train_losses_all_runs = []
+    val_losses_all_runs = []
+
     for i, row in g.iterrows():
-        idx += 1
-        color = colors(idx % num_colors)
-        ax.plot(row['train_losses'], color=color, label=f'Train Run {idx}')
-        ax.plot(row['val_losses'], color=color, label=f'Val Run {idx}')
+        train_losses_all_runs.append(row['train_losses'])
+        val_losses_all_runs.append(row['val_losses'])
+
+    train_losses_all_runs = np.array(train_losses_all_runs)
+    val_losses_all_runs = np.array(val_losses_all_runs)
+    mean_train_losses = np.mean(train_losses_all_runs, axis=0)
+    std_train_losses = np.std(train_losses_all_runs, axis=0)
+    mean_val_losses = np.mean(val_losses_all_runs, axis=0)
+    std_val_losses = np.std(val_losses_all_runs, axis=0)
+
+    epochs = range(len(mean_train_losses))
+    color_train = colors(0 % num_colors)
+    color_val = colors(1 % num_colors)
+
+    fig, ax = plt.subplots()
+    ax.plot(epochs, mean_train_losses, color=color_train, label='Mean Training Loss')
+    ax.fill_between(epochs, mean_train_losses - std_train_losses, mean_train_losses + std_train_losses, color=color_train, alpha=0.3)
+    ax.plot(epochs, mean_val_losses, color=color_val, label='Mean Validation Loss')
+    ax.fill_between(epochs, mean_val_losses - std_val_losses, mean_val_losses + std_val_losses, color=color_val, alpha=0.3)
+
     ax.set_xlabel('Epochs')
     ax.set_ylabel('Loss')
     ax.legend()
