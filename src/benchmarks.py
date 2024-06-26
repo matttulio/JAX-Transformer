@@ -157,10 +157,8 @@ class PrimitiveNLP(Dataset):
                     j = context_window-1
                     for i in range(length - 1, max(length - context_window - 1, -1), -1):
                         token_index = self.vocab.index(sequence[i])
-                        combined_embedding += torch.matmul(embedding_matrix[token_index], position_enc[j])
-                        j -= 1
-
-                            
+                        combined_embedding += embedding_matrix[token_index] * position_enc[j]
+                        j -= 1      
                         
                     #combined_embedding = combined_embedding + position_enc[length - 1]
 
@@ -351,7 +349,7 @@ class PrimitiveNLP_NTP(Dataset):
                     j = context_window-1
                     for i in range(length - 1, max(length - context_window - 1, -1), -1):
                         token_index = self.vocab.index(sequence[i])
-                        combined_embedding += torch.matmul(embedding_matrix[token_index], position_enc[j])
+                        combined_embedding += embedding_matrix[token_index] * position_enc[j]
                         j -= 1
                             
                         
