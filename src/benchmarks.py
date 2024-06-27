@@ -108,8 +108,6 @@ class PrimitiveNLP(Dataset):
                         embedding_vectors.append(vector)
                     
             embedding_matrix = embedding_vectors
-        
-
         self.X = []  # List for the design matrix
         n_gen_seqs = 0  # Total Number of generated sequences
 
@@ -118,7 +116,7 @@ class PrimitiveNLP(Dataset):
         # Process for standard positional encoding as Attention is All You Need
         max_pos = context_window
         #position_enc = torch.tensor([[torch.sin(torch.tensor(pos / (10000 ** (i // 2 * 2.0 / self.embedding_dim)), dtype=torch.float)) if i % 2 == 0 else torch.cos(torch.tensor(pos / (10000 ** (i // 2 * 2.0 / self.embedding_dim)), dtype=torch.float)) for i in range(self.embedding_dim)] for pos in range(max_pos)], dtype=torch.float)
-        position_enc = torch.tensor([[1 / (max_pos - pos) for _ in range(embedding_dim)] for pos in range(max_pos)], dtype=torch.float)
+        position_enc = torch.tensor([[1 - (0.5 * pos / (max_pos - 1)) for _ in range(embedding_dim)] for pos in range(max_pos)], dtype=torch.float)
         
         #stuck_limit = self.seq_len * 5  # Number of iterations that determines if the sequence is cursed, and hence should be dropped
         
@@ -302,8 +300,7 @@ class PrimitiveNLP_NTP(Dataset):
                         embedding_vectors.append(vector)
                     
             embedding_matrix = embedding_vectors
-        
-
+            
         self.X = []  # List for the design matrix
         n_gen_seqs = 0  # Total Number of generated sequences
 
@@ -311,7 +308,6 @@ class PrimitiveNLP_NTP(Dataset):
         max_pos = context_window
         #position_enc = torch.tensor([[torch.sin(torch.tensor(pos / (10000 ** (i // 2 * 2.0 / self.embedding_dim)), dtype=torch.float)) if i % 2 == 0 else torch.cos(torch.tensor(pos / (10000 ** (i // 2 * 2.0 / self.embedding_dim)), dtype=torch.float)) for i in range(self.embedding_dim)] for pos in range(max_pos)], dtype=torch.float)
         position_enc = torch.tensor([[1 - (0.5 * pos / (max_pos - 1)) for _ in range(embedding_dim)] for pos in range(max_pos)], dtype=torch.float)
-
         #stuck_limit = self.seq_len * 5  # Number of iterations that determines if the sequence is cursed, and hence should be dropped
         
         
@@ -358,7 +354,7 @@ class PrimitiveNLP_NTP(Dataset):
 
                     # Calculate similarity with previous tokens and select the most similar one
                     similarities = [torch.dot(embedding_matrix[k], combined_embedding) for k in range(self.vocab_size)]
-                    temperature = 7
+                    temperature = 6
                     similarities = torch.tensor([similarities]) / temperature
                     probs = nn.functional.softmax(similarities[0], dim=0)
                     probs = probs.numpy()
@@ -398,7 +394,6 @@ class PrimitiveNLP_NTP(Dataset):
 
         pbar.close()
         print("\n")
-        print(self.X)
         self.X = np.array(self.X)
         self.y = np.hstack((self.X[:, 1:], np.full((self.X[:, 1:].shape[0], 1), self.vocab_size)))  # shift target sequence to the right
 
