@@ -23,7 +23,7 @@ if(case_study == 1):
 
     num_samples = 50000
     sequence_length = 10
-    context_window = 10
+    context_window = 3
     vocab_size = round(sequence_length * 7.8125)
     vocab = list(range(vocab_size))
     embedding_dim = 50
@@ -218,7 +218,6 @@ ax.set_title('Mean Difference in Validation Losses')
 plt.savefig(os.path.join(save_dir, 'mean_val_loss_difference_only_pos_only_sem.pdf'))
 plt.clf()
 plt.close()
-exit()
 # ============== Attention map ============== #
 def highlight_cell(x, y, color, ax):
     # Given a coordinate (x,y), highlight the corresponding cell using a colored frame in the ac
@@ -384,13 +383,13 @@ for model_type, g in results.groupby('model_type'):
     with open(os.path.join(retrieve_dir, f'run_{r}_model_{model_type}_orig.pkl'), "rb") as file:
         state_orig = cloudpickle.load(file)
     orig_trans.params = state_orig.params
-    print(os.path.join(save_dir, f'run_{r}_model_{model_type}_orig.pkl'))
+    print(os.path.join(retrieve_dir, f'run_{r}_model_{model_type}_orig.pkl'))
     
     reparam_trans = TransformerSeq2Seq(vocab_size, model_dim, hidden_dimension_fc, n_classes, sequence_length, 'both', True)
     with open(os.path.join(retrieve_dir, f'run_{r}_model_{model_type}_retrained.pkl'), "rb") as file:
         state_rep = cloudpickle.load(file)
     reparam_trans.params = state_rep.params
-    print(os.path.join(save_dir, f'run_{r}_model_{model_type}_retrained.pkl'))
+    print(os.path.join(retrieve_dir, f'run_{r}_model_{model_type}_retrained.pkl'))
     
     transformers = [
       orig_trans,
