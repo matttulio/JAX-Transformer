@@ -164,14 +164,15 @@ class PrimitiveNLP(Dataset):
 
                     # Calculate similarity with previous tokens and select the most similar one
                     similarities = [torch.dot(embedding_matrix[k], combined_embedding) for k in range(self.vocab_size)]
-                    similarities = torch.tensor([similarities])
+                    temperature = 6
+                    similarities = torch.tensor([similarities]) / temperature
                     probs = nn.functional.softmax(similarities[0], dim=0)
                     probs = probs.numpy()
 
-                    for k in range(length):
-                        probs[vocab.index(sequence[k])] = 0
+                    # for k in range(length):
+                    #     probs[vocab.index(sequence[k])] = 0
 
-                    probs /= probs.sum()
+                    # probs /= probs.sum()
                    
                     next_token = rs.choice(vocab, p=probs)
                     
@@ -357,14 +358,15 @@ class PrimitiveNLP_NTP(Dataset):
 
                     # Calculate similarity with previous tokens and select the most similar one
                     similarities = [torch.dot(embedding_matrix[k], combined_embedding) for k in range(self.vocab_size)]
-                    similarities = torch.tensor([similarities])
+                    temperature = 6
+                    similarities = torch.tensor([similarities]) / temperature
                     probs = nn.functional.softmax(similarities[0], dim=0)
                     probs = probs.numpy()
 
-                    for k in range(length):
-                        probs[vocab.index(sequence[k])] = 0
+                    # for k in range(length):
+                    #     probs[vocab.index(sequence[k])] = 0
 
-                    probs /= probs.sum()
+                    #probs /= probs.sum()
                    
                     next_token = rs.choice(vocab, p=probs)
                         
@@ -396,7 +398,7 @@ class PrimitiveNLP_NTP(Dataset):
 
         pbar.close()
         print("\n")
-        
+        print(self.X)
         self.X = np.array(self.X)
         self.y = np.hstack((self.X[:, 1:], np.full((self.X[:, 1:].shape[0], 1), self.vocab_size)))  # shift target sequence to the right
 
