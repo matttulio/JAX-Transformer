@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import scienceplots
 import pickle
 import os
 import seaborn as sns
@@ -8,11 +9,13 @@ from src.benchmarks import PrimitiveNLP
 from scipy.optimize import curve_fit
 from scipy.stats import chi2_contingency
 
+plt.style.use('science')
+
 print("\n")
 print("PROPERTIES OF THE PRIMITIVE NLP DATASET")
 print("\n")
 data_dir = 'Datasets/Data'
-file_name = 'primitive_NLP_dataset_n_smpl5000__seq_len10__cont_win10__'\
+file_name = 'primitive_NLP_dataset_n_smpl200000__seq_len10__cont_win10__'\
         'v_size78__emb_dim50__emb_typeglove.6B.50d__seed42__d_par1.1.pkl'
 
 data_path = os.path.join(data_dir, file_name)
@@ -60,6 +63,7 @@ def read_embeddings(embedding_path, vocab_size):
         num_rows = len(lines)
 
         step = num_rows // vocab_size
+        step=1
         for i, line in enumerate(lines):
             if i >= vocab_size * step:  # Break if enough vectors are read
                 break
@@ -76,7 +80,10 @@ def normalize_embeddings(embeddings):
 def compute_similarity_matrix(normalized_embeddings):
     return np.dot(normalized_embeddings, normalized_embeddings.T)
 
-
+plt.rcParams['xtick.major.size'] = 2
+plt.rcParams['ytick.major.size'] = 2
+plt.rcParams['xtick.minor.size'] = 0
+plt.rcParams['ytick.minor.size'] = 0
 
 embedding_path = 'Datasets/glove/glove.6B.50d.txt'
 vocab_size = dataset.vocab_size  # Adjust this based on your requirements
@@ -86,23 +93,27 @@ norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
 embeddings = embeddings / norms
 similarity_matrix = np.dot(embeddings, embeddings.T)
 labels = [f'{i+1}' for i in range(vocab_size)]
+
 plt.figure(figsize=(10, 8))
-plt.xticks(fontsize=6)  
-plt.yticks(fontsize=6)  
 sns.heatmap(similarity_matrix, xticklabels=labels, yticklabels=labels, cmap='viridis')
+plt.xticks(fontsize=7)
+plt.yticks(fontsize=7)
 plt.title('Dot Product Similarity of Normalized Logspaced Embeddings')
-plt.show()
+plt.savefig('Datasets/Data/Properties/similarities_logspaced.pdf', bbox_inches='tight')
+plt.close()
 
 embeddings = read_embeddings(embedding_path, vocab_size)
 norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
 embeddings = embeddings / norms
 similarity_matrix = np.dot(embeddings, embeddings.T)
+
 plt.figure(figsize=(10, 8))
-plt.xticks(fontsize=6)  
-plt.yticks(fontsize=6)  
 sns.heatmap(similarity_matrix, xticklabels=labels, yticklabels=labels, cmap='viridis')
+plt.xticks(fontsize=7)
+plt.yticks(fontsize=7)
 plt.title('Dot Product Similarity of Normalized Linspaced Embeddings')
-plt.show()
+plt.savefig('Datasets/Data/Properties/similarities_linspaced.pdf', bbox_inches='tight')
+plt.close()
 
 
 # ============== Dataset statistics ============== #
@@ -129,11 +140,19 @@ for i in vocab_y:
     h = (h / total_sequences) * 100  # Calculate the percentage
     distr.append(h)
 
+plt.rcParams['xtick.major.size'] = 5
+plt.rcParams['ytick.major.size'] = 5
+plt.rcParams['xtick.minor.size'] = 0
+plt.rcParams['ytick.minor.size'] = 2
+
+plt.figure(figsize=(12, 8))
 plt.bar(vocab_y, distr, color='skyblue')
-plt.xlabel('Labels')
-plt.ylabel('Percentage')
-plt.title('Distribution of the labels')
-plt.show()
+plt.xticks([0, 1], ['0', '1'], fontsize=14)
+plt.xlabel('Labels', fontsize=14)
+plt.ylabel('Frequency', fontsize=14)
+plt.title('Distribution of the labels', fontsize=16)
+plt.savefig('Datasets/Data/Properties/distribution_of_labelsSUM.pdf', bbox_inches='tight')
+plt.close()
 
 # ============== Distribution of input tokens ============== #
 distr = []
@@ -150,20 +169,27 @@ distr = np.array(distr) / num_tok
 distr[::-1].sort()
 distr = distr.tolist()
 
+plt.rcParams['xtick.major.size'] = 5
+plt.rcParams['ytick.major.size'] = 5
+plt.rcParams['xtick.minor.size'] = 2
+plt.rcParams['ytick.minor.size'] = 2
+
+plt.figure(figsize=(12, 8))
 plt.plot(range(1, dataset.vocab_size + 1), distr, '-', color = 'blue', label = 'Observed distribution')
 
 x_values = np.linspace(1, dataset.vocab_size, dataset.vocab_size)  # Generating x values for the function
 y_values = np.max(distr) / (x_values + 0) ** (1)
 
-
 plt.plot(x_values, y_values, color='skyblue', label = 'Zipf`s Law: k = 1')
-plt.xlabel('Degree')
-plt.ylabel('Frequency')
+plt.xlabel('Degree', fontsize=14)
+plt.ylabel('Frequency', fontsize=14)
 #plt.xscale('log')
 #plt.yscale('log')
 plt.legend()
-plt.title('Distribution of the tokens')
-plt.show()
+plt.title('Distribution of the tokens', fontsize=16)
+#plt.show()
+plt.clf()
+plt.close()
 
 # ============== Fit Zipf's Law ============== #
 # Define the function to fit
@@ -171,25 +197,27 @@ def func(x, k, b):
     return  1 / (x + b) ** k
 
 # Plot the data
-plt.plot(x_values, distr, '-', color='blue', label = 'Observed distribution' )
+plt.figure(figsize=(12, 8))
+plt.plot(x_values, distr, '-', color='blue', linewidth=2, label = 'Observed distribution' )
 
 # Fit the function to the data
 popt, pcov = curve_fit(func, x_values, distr, (1, 2.7))
 
 # Plot the fitted function
-plt.plot(x_values, func(x_values, *popt), color='skyblue', label=f'Zipf`s Law:  k={popt[0]:.2f}, {popt[1]:.2f}')
+plt.plot(x_values, func(x_values, *popt), color='skyblue', linewidth=2, label=f'Zipf`s Law:  k={popt[0]:.2f}, {popt[1]:.2f}')
 
 # Plot settings
-plt.xlabel('Degree')
-plt.ylabel('Frequency')
-plt.title('Distribution of the tokens')
-plt.legend()
-plt.show()
+plt.xlabel('Degree', fontsize=14)
+plt.ylabel('Frequency', fontsize=14)
+plt.title('Distribution of the tokens', fontsize=16)
+plt.legend(fontsize=14)
+plt.savefig('Datasets/Data/Properties/distribution_of_tokensSUM.pdf', bbox_inches='tight')
+plt.close()
 
 print("Fit the distribution parameters")
 for i, param in enumerate(popt):
     print(f"Optimal parameter {i+1}: {param:.2f}")
-print()
+
 
 # Compute the fitted values
 fitted_values = func(x_values, *popt)

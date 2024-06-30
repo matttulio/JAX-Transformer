@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import scienceplots
 from matplotlib.colors import Normalize, LinearSegmentedColormap
 import pandas as pd
 import ast
@@ -11,17 +12,17 @@ import cloudpickle
 import jax.numpy as jnp
 from flax.traverse_util import flatten_dict
 
+plt.style.use('science')
 
-
-#case_study = 1  # Plot results for primitive NLP dataset for next token prediction
+case_study = 1  # Plot results for primitive NLP dataset for next token prediction
 #case_study = 2   # Plot results for primitive NLP dataset for summing task
-case_study = 3  # Plot results for Next Histogram Task dataset
+#case_study = 3  # Plot results for Next Histogram Task dataset
 
 print("\n")
 
 if(case_study == 1):
 
-    num_samples = 50000
+    num_samples = 200000
     sequence_length = 10
     context_window = 3
     vocab_size = round(sequence_length * 7.8125)
@@ -75,7 +76,7 @@ elif(case_study == 2):
 
 elif(case_study == 3):
 
-    num_samples = 50000
+    num_samples = 200000
     sequence_length = 10
     vocab_size = 15
     seed = 42
@@ -120,16 +121,17 @@ for model_type, g in results.groupby('model_type'):
     std_acc = np.std(all_acc, axis=0)
 
     color = colors(idx % num_colors)
+    plt.figure(figsize=(10, 8))
     plt.plot(mean_acc, color=color, label=f'Mean Validation Acc')
     plt.fill_between(range(len(mean_acc)), mean_acc - std_acc, mean_acc + std_acc, color=color, alpha=0.2)
-    plt.axhline(y=0.8919672924086934, color='r', linestyle='--', label='Baseline')
+    #plt.axhline(y=0.8919672924086934, color='r', linestyle='--', label='Baseline')
 
     print(model_type, np.mean(mean_acc), np.std(mean_acc))
 
-    plt.xlabel('epochs')
-    plt.ylabel('accuracy')
-    plt.legend()
-    plt.title(model_type)
+    plt.xlabel('Epochs')
+    plt.ylabel('Accuracy')
+    plt.legend(fontsize=14)
+    plt.title("Only Positional" if model_type == "only_pos" else "Only Semantic")
     plt.savefig(os.path.join(save_dir, f'accuracy_{model_type}.pdf'))
     plt.clf()
     plt.close()
@@ -154,9 +156,9 @@ for model_type, g in results.groupby('model_type'):
     mean_val_losses = np.mean(all_val_losses, axis=0)
     std_val_losses = np.std(all_val_losses, axis=0)
 
-    fig, ax = plt.subplots()
-    color = colors(idx % num_colors)
     
+    fig, ax = plt.subplots(figsize=(10, 8))
+    color = colors(idx % num_colors)
     # Plot mean and std for train losses
     ax.plot(mean_train_losses, color=color, label='Mean Train Loss')
     ax.fill_between(range(len(mean_train_losses)), mean_train_losses - std_train_losses, mean_train_losses + std_train_losses, color=color, alpha=0.2)
@@ -167,8 +169,8 @@ for model_type, g in results.groupby('model_type'):
     
     ax.set_xlabel('Epochs')
     ax.set_ylabel('Loss')
-    ax.legend()
-    ax.set_title(model_type)
+    ax.legend(fontsize=14)
+    ax.set_title("Only Positional" if model_type == "only_pos" else "Only Semantic")
     plt.savefig(os.path.join(save_dir, f'loss_{model_type}.pdf'))
     plt.clf()
     plt.close()
@@ -200,12 +202,11 @@ std_val_loss_diff = np.std(all_val_loss_diffs, axis=0)
 
 # Normalize differences for coloring
 limit = np.min((np.abs(np.max(mean_val_loss_diff)), np.abs(np.min(mean_val_loss_diff))))
-print(limit)
 norm = Normalize(vmin=-0.001 * limit, vmax=0.001*limit)
 colors_diff = [cmap_diff(norm(val)) for val in mean_val_loss_diff]
 
 # Plotting
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(10, 8))
 ax.plot(range(len(mean_val_loss_diff)), mean_val_loss_diff, linestyle='-', linewidth=1, color='gray')
 ax.fill_between(range(len(mean_val_loss_diff)), mean_val_loss_diff - std_val_loss_diff, mean_val_loss_diff + std_val_loss_diff, color='blueviolet', alpha=0.1)
 ax.scatter(range(len(mean_val_loss_diff)), mean_val_loss_diff, s=50, c=colors_diff)
@@ -218,6 +219,7 @@ ax.set_title('Mean Difference in Validation Losses')
 plt.savefig(os.path.join(save_dir, 'mean_val_loss_difference_only_pos_only_sem.pdf'))
 plt.clf()
 plt.close()
+
 # ============== Attention map ============== #
 def highlight_cell(x, y, color, ax):
     # Given a coordinate (x,y), highlight the corresponding cell using a colored frame in the ac
@@ -282,8 +284,8 @@ def visualize_attention_matrix(x, transformer, ax, cmap='tab20b'):
             embedding_matrix = embedding_vectors
 
         max_pos = context_window
-        position_enc = torch.tensor([[1 / (max_pos - pos) for _ in range(embedding_dim)] for pos in range(max_pos)], dtype=torch.float)
-
+        position_enc = torch.tensor([[1 - (0.5 * pos / (max_pos - 1)) for _ in range(embedding_dim)] for pos in range(max_pos - 1, -1, -1)], dtype=torch.float)
+        
         highlight_cell(0, 0, color='white', ax=ax)
         for length in range(sequence_length-1, 0, -1):
            
@@ -292,14 +294,13 @@ def visualize_attention_matrix(x, transformer, ax, cmap='tab20b'):
 
             j = context_window-1
             similarities = []
-            for i in range(length, max(length - context_window, -1), -1):
-            
-                token_index = vocab.index(x[i-1])
+            for i in range(length-1, max(length - context_window - 1, -1), -1):
+                token_index = vocab.index(x[i])
                 similarities.append(torch.dot(embedding_matrix[token_index] * position_enc[j], token_embedding).item())
                 j -= 1
 
             #similarities = [torch.dot(torch.matmul(embedding_matrix[vocab.index(x[k])], position_enc[k - max(i-context_window, 0)]), token_embedding) for k in range(i, max(i-context_window, 0), -1)]
-            similarities = torch.tensor(similarities)\
+            similarities = torch.tensor(similarities)
 
             _, most_similar_tokens_i = torch.topk(similarities, min(context_window, length))
 
@@ -351,8 +352,12 @@ transformers = [
     transformer_only_sem,
 ]
 
+plt.rcParams['xtick.major.size'] = 0
+plt.rcParams['ytick.major.size'] = 0
+plt.rcParams['xtick.minor.size'] = 0
+plt.rcParams['ytick.minor.size'] = 0
 
-fig, axes = plt.subplots(figsize=(15,8),ncols=3,nrows=2)
+fig, axes = plt.subplots(figsize=(15,8), ncols=3, nrows=2)
 cmap = custom_cmap# 'Paired'
 data = np.random.random((10, 10))
 im1 = axes[0,0].imshow(data, cmap=cmap, vmin=0, vmax=1.0)
@@ -360,17 +365,16 @@ for i, transformer in enumerate(transformers):
   axes[i,0].set_ylabel("Positional" if transformer.attention_input == 'only_pos' else "Semantic", fontsize=14)
   print(transformer.attention_input)
   for j, x in enumerate(xs):
-    axes[0,j].set_title(f"Example Sequence #{j+1}",fontsize=10)
+    axes[0,j].set_title(f"Example Sequence {j+1}",fontsize=10)
     visualize_attention_matrix(x, transformer, axes[i,j], cmap=cmap)
 
 norm = Normalize(vmin=0, vmax=1.0)
 cbar = fig.colorbar(im1, ax=axes, norm=norm)
-cbar.set_label('attention value',fontsize=12)
+cbar.set_label('Attention Value',fontsize=12)
 plt.savefig(os.path.join(save_dir, f'tiny_example.pdf'))
 plt.clf()
 plt.close()
 #plt.show()
-
 
 # ============== Results for reparam transformer ============== #
 
@@ -403,7 +407,7 @@ for model_type, g in results.groupby('model_type'):
     for i, transformer in enumerate(transformers):
       print(transformer.attention_input)
       for j, x in enumerate(xs):
-        axes[0,j].set_title(f"Example Sequence #{j+1}",fontsize=10)
+        axes[0,j].set_title(f"Example Sequence {j+1}",fontsize=10)
         visualize_attention_matrix(x, transformer, axes[i,j], cmap=cmap)
 
     axes[0,0].set_ylabel(r'$\theta_{sem}$' if orig_trans.attention_input == 'only_sem' else r'$\theta_{pos}$')
@@ -411,13 +415,13 @@ for model_type, g in results.groupby('model_type'):
 
     norm = Normalize(vmin=0, vmax=1.0)
     cbar = fig.colorbar(im1, ax=axes, norm=norm)
-    cbar.set_label('attention value',fontsize=12)
+    cbar.set_label('Attention Value',fontsize=12)
     plt.savefig(os.path.join(save_dir, f'run_{r}_training_comparison_{orig_trans.attention_input}.pdf'),bbox_inches='tight')
     plt.clf()
     plt.close()
     #plt.show()
 
-
+plt.rcdefaults()
 # ============== Distance between the models's parameters ============== #
 def model_distance(model1, model2, only_zeros=False):
     params1 = [param for param in model1.parameters()]
@@ -553,8 +557,7 @@ if(case_study == 1):
 
     # Plotting the distributions for each model type
     for model_type in model_types:
-        fig, ax = plt.subplots()
-
+        fig, ax = plt.subplots(figsize=(10, 8))
         # Plot the true distribution
         ax.bar(np.arange(vocab_size) - width / 2, distr_to_pred, width, color=colors(2 % n_runs), label='Distribution tokens to predict')
 
@@ -567,7 +570,7 @@ if(case_study == 1):
         ax.set_xlabel('Token Rank')
         ax.set_ylabel('Frequency')
         ax.set_title(f'Input vs Output Token Frequency Distributions ({model_type})')
-        ax.legend()
+        ax.legend(fontsize=14)
 
         plt.savefig(os.path.join(save_dir, f'mean_distr_predict_vs_label_{model_type}.pdf'))
         plt.clf()
@@ -594,12 +597,13 @@ for model_type, g in results.groupby('model_type'):
     epochs = range(len(mean_val_acc))
     color = colors(0 % num_colors)
 
+    plt.figure(figsize=(10, 8))
     plt.plot(epochs, mean_val_acc, color=color, label='Mean Validation Accuracy')
     plt.fill_between(epochs, mean_val_acc - std_val_acc, mean_val_acc + std_val_acc, color=color, alpha=0.3)
 
     plt.xlabel('Epochs')
     plt.ylabel('Accuracy')
-    plt.legend()
+    plt.legend(fontsize=14)
     plt.title(f"Reparametrized {model_type}")
     plt.savefig(os.path.join(save_dir, f'accuracy_reparametrized_{model_type}.pdf'))
     plt.clf()
@@ -623,18 +627,16 @@ for model_type, g in results.groupby('model_type'):
     std_val_losses = np.std(val_losses_all_runs, axis=0)
 
     epochs = range(len(mean_train_losses))
-    color_train = colors(0 % num_colors)
-    color_val = colors(1 % num_colors)
 
-    fig, ax = plt.subplots()
-    ax.plot(epochs, mean_train_losses, color=color_train, label='Mean Training Loss')
-    ax.fill_between(epochs, mean_train_losses - std_train_losses, mean_train_losses + std_train_losses, color=color_train, alpha=0.3)
-    ax.plot(epochs, mean_val_losses, color=color_val, label='Mean Validation Loss')
-    ax.fill_between(epochs, mean_val_losses - std_val_losses, mean_val_losses + std_val_losses, color=color_val, alpha=0.3)
+    fig, ax = plt.subplots(figsize=(10, 8))
+    ax.plot(epochs, mean_train_losses, color=colors(idx % num_colors), label='Mean Training Loss')
+    ax.fill_between(epochs, mean_train_losses - std_train_losses, mean_train_losses + std_train_losses, color=colors(idx % num_colors), alpha=0.3)
+    ax.plot(epochs, mean_val_losses, color=colors((idx + 2) % num_colors), label='Mean Validation Loss')
+    ax.fill_between(epochs, mean_val_losses - std_val_losses, mean_val_losses + std_val_losses, color=colors((idx + 2) % num_colors), alpha=0.3)
 
     ax.set_xlabel('Epochs')
     ax.set_ylabel('Loss')
-    ax.legend()
+    ax.legend(fontsize=14)
     ax.set_title(f"Reparametrized {model_type}")
     plt.savefig(os.path.join(save_dir, f'loss_reparametrized_{model_type}.pdf'))
     plt.clf()
