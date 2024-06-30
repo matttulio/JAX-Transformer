@@ -194,7 +194,7 @@ def train_and_evaluate(train_dataset, eval_dataset, state, epochs):
 
     train_epoch_metrics = []
     val_epoch_metrics = []
-
+    
     for epoch in range(1, epochs + 1):
         #best_eval_loss = 1e6
         print(f"Epoch {epoch}...")
@@ -202,7 +202,7 @@ def train_and_evaluate(train_dataset, eval_dataset, state, epochs):
         # ============== Training ============== #
         train_batch_metrics = []
         train_datagen = iter(train_dataset)
-        for batch_idx in tqdm(range(1, num_train_batches + 1)):
+        for _ in tqdm(range(1, num_train_batches + 1)):
             batch = next(train_datagen)
             state, metrics = train_step(state, batch)
             train_batch_metrics.append(metrics)
@@ -212,7 +212,7 @@ def train_and_evaluate(train_dataset, eval_dataset, state, epochs):
         # ============== Validation ============= #
         eval_batch_metrics = []
         eval_datagen = iter(eval_dataset)
-        for batch_idx in tqdm(range(1, num_eval_batches + 1)):
+        for _ in tqdm(range(1, num_eval_batches + 1)):
             batch = next(eval_datagen)
             metrics = eval_step(state, batch)
             eval_batch_metrics.append(metrics)

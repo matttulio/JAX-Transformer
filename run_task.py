@@ -253,7 +253,7 @@ for model_type in model_types:
         first_val_loss = {'loss': eval_minibatch_first_metrics['loss']}
         first_val_acc = {'accuracy': eval_minibatch_first_metrics['accuracy']}
         
-        trained_state, train_minibatch_metrics, val_minibatch_metrics, train_epoch_metrics, val_epoch_metrics = train_and_evaluate(train_dataset, val_dataset, state, n_epochs)
+        trained_state, _, _, train_epoch_metrics, val_epoch_metrics = train_and_evaluate(train_dataset, val_dataset, state, n_epochs)
         with open(os.path.join(save_dir, f'run_{i}_model_{model_type}_orig.pkl'), "wb") as file:
             cloudpickle.dump(trained_state, file)
 
@@ -305,7 +305,7 @@ for r in range(n_runs):
         with open(os.path.join(save_dir, f'run_{r}_model_{model_type}_repar.pkl'), "wb") as file:
             cloudpickle.dump(trained_state, file)
 
-        trained_state, train_minibatch_metrics, val_minibatch_metrics, train_epoch_metrics, val_epoch_metrics = train_and_evaluate(train_dataset, val_dataset, rep_trans_state, n_epochs)
+        trained_state, _, _, train_epoch_metrics, val_epoch_metrics = train_and_evaluate(train_dataset, val_dataset, rep_trans_state, n_epochs)
 
         with open(os.path.join(save_dir, f'run_{r}_model_{model_type}_retrained.pkl'), "wb") as file:
             cloudpickle.dump(trained_state, file)
