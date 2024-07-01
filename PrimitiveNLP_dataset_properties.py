@@ -16,7 +16,7 @@ print("PROPERTIES OF THE PRIMITIVE NLP DATASET")
 print("\n")
 data_dir = 'Datasets/Data'
 file_name = 'primitive_NLP_dataset_n_smpl200000__seq_len10__cont_win10__'\
-        'v_size78__emb_dim50__emb_typeglove.6B.50d__seed42__d_par1.1.pkl'
+        'v_size78__emb_dim50__emb_typeglove.6B.50d__seed42__d_par1.1__temp2.pkl'
 
 data_path = os.path.join(data_dir, file_name)
 

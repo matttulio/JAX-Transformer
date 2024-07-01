@@ -1,13 +1,3 @@
-# ---
-# # Training a single Layer of Attention on the Histogram Task may lead to two solutions
-# 
-# This notebook shows how to train and evaluate single-layer transformers with dot-product attention and trained positional encodings.
-# 
-# - Part 1: Define data and model architecture
-# - Part 2: Training of models with different settings on the attention layer (positional, semantic, or both)
-# - Part 3: Introspecting the attention layers for some input sequences
-# - Part 4: Checking whether the parameter values with the frozen weights stay close to their original position in the unfrozen weight space
-
 from jax import random
 from torch.utils.data import random_split
 import pandas as pd
@@ -90,7 +80,7 @@ if(task == 1):
     
 
     file_name = f"primitive_NLP_NTP_dataset_n_smpl{num_samples}__seq_len{sequence_length}__cont_win{context_window}__" \
-    + f"v_size{vocab_size}__emb_dim{embedding_dim}__emb_type{embedding_model}__seed{seed}__d_par{distr_param}"
+    + f"v_size{vocab_size}__emb_dim{embedding_dim}__emb_type{embedding_model}__seed{seed}__d_par{distr_param}__temp{temperature}"
     file_ext = '.pkl'
     save_dir = os.path.join('Empirics', file_name)
     
@@ -147,7 +137,7 @@ elif(task == 2):
 
 
     file_name = f"primitive_NLP_dataset_n_smpl{num_samples}__seq_len{sequence_length}__cont_win{context_window}__" \
-    + f"v_size{vocab_size}__emb_dim{embedding_dim}__emb_type{embedding_model}__seed{seed}__d_par{distr_param}"
+    + f"v_size{vocab_size}__emb_dim{embedding_dim}__emb_type{embedding_model}__seed{seed}__d_par{distr_param}__temp{temperature}"
     file_ext = '.pkl'
     save_dir = os.path.join('Empirics', file_name)
 
@@ -245,12 +235,13 @@ for model_type in model_types:
     print(f'Running {model_type}...')
     for i in range(n_runs):
 
-        print(f"Run: {i}")
+        print(f"\n Run: {i}")
 
         rng = random.PRNGKey(i)
 
         transformer = TransformerSeq2Seq(vocab_size, model_dim, hidden_dimension_fc, n_classes, seq_len, model_type)
         state = init_train_state(transformer, rng, dummy_input, learning_rate)
+        print("The number of trainable parameters is: ", number_of_parameters(state.params), "\n")
         
         with open(os.path.join(save_dir, f'run_{i}_initmodel_{model_type}_orig.pkl'), "wb") as file:
             cloudpickle.dump(state, file)
@@ -261,19 +252,19 @@ for model_type in model_types:
         first_val_loss = {'loss': eval_minibatch_first_metrics['loss']}
         first_val_acc = {'accuracy': eval_minibatch_first_metrics['accuracy']}
         
-        trained_state, _, _, train_epoch_metrics, val_epoch_metrics = train_and_evaluate(train_dataset, val_dataset, state, n_epochs)
+        trained_state, train_minibatch_metrics, val_minibatch_metrics, _, _ = train_and_evaluate(train_dataset, val_dataset, state, n_epochs)
         with open(os.path.join(save_dir, f'run_{i}_model_{model_type}_orig.pkl'), "wb") as file:
             cloudpickle.dump(trained_state, file)
 
-        train_epoch_metrics.insert(0, first_train_loss)
-        val_epoch_metrics.insert(0, first_val_loss)
-        val_epoch_metrics.insert(0, first_val_acc)
+        train_minibatch_metrics.insert(0, first_train_loss)
+        val_minibatch_metrics.insert(0, first_val_loss)
+        val_minibatch_metrics.insert(0, first_val_acc)
 
         results.append({
           'model_type': model_type,
-            'train_losses': [float(metrics['loss']) for metrics in train_epoch_metrics if 'loss' in metrics],
-            'val_losses': [float(metrics['loss']) for metrics in val_epoch_metrics if 'loss' in metrics],
-            'val_acc': [float(metrics['accuracy']) for metrics in val_epoch_metrics if 'accuracy' in metrics],
+            'train_losses': [float(metrics['loss']) for metrics in train_minibatch_metrics if 'loss' in metrics],
+            'val_losses': [float(metrics['loss']) for metrics in val_minibatch_metrics if 'loss' in metrics],
+            'val_acc': [float(metrics['accuracy']) for metrics in val_minibatch_metrics if 'accuracy' in metrics],
             'run':i,
         })
 
@@ -305,6 +296,7 @@ for r in range(n_runs):
             orig_state = cloudpickle.load(file)
 
         rep_trans_state = reparameterize(vocab_size, model_dim, hidden_dimension_fc, n_classes, seq_len, orig_state, model_type, dummy_input, learning_rate, rng)
+        print("The number of trainable parameters is: ", number_of_parameters(rep_trans_state.params), "\n")
 
         train_minibatch_first_metrics, eval_minibatch_first_metrics = eval_init(train_dataset, val_dataset, rep_trans_state)
         
@@ -315,20 +307,20 @@ for r in range(n_runs):
         with open(os.path.join(save_dir, f'run_{r}_model_{model_type}_repar.pkl'), "wb") as file:
             cloudpickle.dump(trained_state, file)
 
-        trained_state, _, _, train_epoch_metrics, val_epoch_metrics = train_and_evaluate(train_dataset, val_dataset, rep_trans_state, n_epochs)
+        trained_state, train_minibatch_metrics, val_minibatch_metrics, _, _ = train_and_evaluate(train_dataset, val_dataset, rep_trans_state, n_epochs)
 
         with open(os.path.join(save_dir, f'run_{r}_model_{model_type}_retrained.pkl'), "wb") as file:
             cloudpickle.dump(trained_state, file)
 
-        train_epoch_metrics.insert(0, first_train_loss)
-        val_epoch_metrics.insert(0, first_val_loss)
-        val_epoch_metrics.insert(0, first_val_acc)
+        train_minibatch_metrics.insert(0, first_train_loss)
+        val_minibatch_metrics.insert(0, first_val_loss)
+        val_minibatch_metrics.insert(0, first_val_acc)
 
         reparameterized_transformers.append({
           'model_type': model_type,
-            'train_losses': [float(metrics['loss']) for metrics in train_epoch_metrics if 'loss' in metrics],
-            'val_losses': [float(metrics['loss']) for metrics in val_epoch_metrics if 'loss' in metrics],
-            'val_acc': [float(metrics['accuracy']) for metrics in val_epoch_metrics if 'accuracy' in metrics],
+            'train_losses': [float(metrics['loss']) for metrics in train_minibatch_metrics if 'loss' in metrics],
+            'val_losses': [float(metrics['loss']) for metrics in val_minibatch_metrics if 'loss' in metrics],
+            'val_acc': [float(metrics['accuracy']) for metrics in val_minibatch_metrics if 'accuracy' in metrics],
             'run':r,
         })
 

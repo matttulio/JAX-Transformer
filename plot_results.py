@@ -14,8 +14,8 @@ from flax.traverse_util import flatten_dict
 
 plt.style.use('science')
 
-#case_study = 1  # Plot results for primitive NLP dataset for next token prediction
-case_study = 2   # Plot results for primitive NLP dataset for summing task
+case_study = 1  # Plot results for primitive NLP dataset for next token prediction
+#case_study = 2   # Plot results for primitive NLP dataset for summing task
 #case_study = 3  # Plot results for Next Histogram Task dataset
 
 print("\n")
@@ -24,7 +24,7 @@ if(case_study == 1):
 
     num_samples = 50000
     sequence_length = 10
-    context_window = 3
+    context_window = 10
     vocab_size = round(sequence_length * 7.8125)
     vocab = list(range(vocab_size))
     embedding_dim = 50
@@ -44,7 +44,7 @@ if(case_study == 1):
 
 
     save_dir = f"Empirics/primitive_NLP_NTP_dataset_n_smpl{num_samples}__seq_len{sequence_length}__cont_win{context_window}__" \
-    + f"v_size{vocab_size}__emb_dim{embedding_dim}__emb_type{embedding_model}__seed{seed}__d_par{distr_param}/figures"
+    + f"v_size{vocab_size}__emb_dim{embedding_dim}__emb_type{embedding_model}__seed{seed}__d_par{distr_param}__temp{temperature}/figures"
     retrieve_dir = f"Empirics/primitive_NLP_NTP_dataset_n_smpl{num_samples}__seq_len{sequence_length}__cont_win{context_window}__" \
     + f"v_size{vocab_size}__emb_dim{embedding_dim}__emb_type{embedding_model}__seed{seed}__d_par{distr_param}__temp{temperature}"
 
@@ -71,7 +71,7 @@ elif(case_study == 2):
     print(f"vocab_size={vocab_size}, embedding_dim={embedding_dim}, embedding_type={embedding_model}, seed={seed}, distribution_parameter={distr_param}, temperature={temperature}\n")
 
     save_dir = f"Empirics/primitive_NLP_dataset_n_smpl{num_samples}__seq_len{sequence_length}__cont_win{context_window}__" \
-    + f"v_size{vocab_size}__emb_dim{embedding_dim}__emb_type{embedding_model}__seed{seed}__d_par{distr_param}/figures"
+    + f"v_size{vocab_size}__emb_dim{embedding_dim}__emb_type{embedding_model}__seed{seed}__d_par{distr_param}__temp{temperature}/figures"
     retrieve_dir = f"Empirics/primitive_NLP_dataset_n_smpl{num_samples}__seq_len{sequence_length}__cont_win{context_window}__" \
     + f"v_size{vocab_size}__emb_dim{embedding_dim}__emb_type{embedding_model}__seed{seed}__d_par{distr_param}__temp{temperature}"
 
@@ -106,8 +106,12 @@ results.val_losses = results.val_losses.apply(ast.literal_eval)
 results.val_acc = results.val_acc.apply(ast.literal_eval)
 
 n_runs = np.max(results['run']) + 1
+train_steps = list(range(0, len(results['train_losses'][0])))
+val_steps = list(range(0, (len(results['train_losses'][0]) - (len(results['train_losses'][0]) % 10)) + 1, 10))
+val_steps.append(len(results['train_losses'][0]) - 1)
+val_steps.insert(1, 1)
 
-# ============== Validation accuracy vs epochs ============== #
+# ============== Validation accuracy vs steps ============== #
 idx = 0
 num_colors = n_runs
 colors = plt.colormaps['viridis'].resampled(num_colors)  # You can change 'tab10' to other colormaps
@@ -124,13 +128,13 @@ for model_type, g in results.groupby('model_type'):
 
     color = colors(idx % num_colors)
     plt.figure(figsize=(10, 8))
-    plt.plot(mean_acc, color=color, label=f'Mean Validation Acc')
-    plt.fill_between(range(len(mean_acc)), mean_acc - std_acc, mean_acc + std_acc, color=color, alpha=0.2)
+    plt.plot(val_steps, mean_acc, color=color, label=f'Mean Validation Acc')
+    plt.fill_between(val_steps, mean_acc - std_acc, mean_acc + std_acc, color=color, alpha=0.2)
     #plt.axhline(y=0.8919672924086934, color='r', linestyle='--', label='Baseline')
 
     print(model_type, np.mean(mean_acc), np.std(mean_acc))
 
-    plt.xlabel('Epochs')
+    plt.xlabel('Steps')
     plt.ylabel('Accuracy')
     plt.legend(fontsize=14)
     plt.title("Only Positional" if model_type == "only_pos" else "Only Semantic")
@@ -141,7 +145,7 @@ for model_type, g in results.groupby('model_type'):
 #exit()
 
 
-# ============== Val and Train loss against epochs ============== #
+# ============== Val and Train loss against steps ============== #
 idx = 0
 for model_type, g in results.groupby('model_type'):
     all_train_losses = []
@@ -162,14 +166,14 @@ for model_type, g in results.groupby('model_type'):
     fig, ax = plt.subplots(figsize=(10, 8))
     color = colors(idx % num_colors)
     # Plot mean and std for train losses
-    ax.plot(mean_train_losses, color=color, label='Mean Train Loss')
-    ax.fill_between(range(len(mean_train_losses)), mean_train_losses - std_train_losses, mean_train_losses + std_train_losses, color=color, alpha=0.2)
+    ax.plot(train_steps, mean_train_losses, color=color, label='Mean Train Loss')
+    ax.fill_between(train_steps, mean_train_losses - std_train_losses, mean_train_losses + std_train_losses, color=color, alpha=0.2)
     
     # Plot mean and std for validation losses
-    ax.plot(mean_val_losses, color=colors((idx + 2) % num_colors), label='Mean Val Loss')
-    ax.fill_between(range(len(mean_val_losses)), mean_val_losses - std_val_losses, mean_val_losses + std_val_losses, color=colors((idx + 2) % num_colors), alpha=0.2)
+    ax.plot(val_steps, mean_val_losses, color=colors((idx + 2) % num_colors), label='Mean Val Loss')
+    ax.fill_between(val_steps, mean_val_losses - std_val_losses, mean_val_losses + std_val_losses, color=colors((idx + 2) % num_colors), alpha=0.2)
     
-    ax.set_xlabel('Epochs')
+    ax.set_xlabel('Steps')
     ax.set_ylabel('Loss')
     ax.legend(fontsize=14)
     ax.set_title("Only Positional" if model_type == "only_pos" else "Only Semantic")
@@ -177,7 +181,6 @@ for model_type, g in results.groupby('model_type'):
     plt.clf()
     plt.close()
     #plt.show()
-
 
 cmap_diff = LinearSegmentedColormap.from_list("grad_cmap", ["cornflowerblue", "lightgray", "#d15f90"])
 
@@ -209,11 +212,11 @@ colors_diff = [cmap_diff(norm(val)) for val in mean_val_loss_diff]
 
 # Plotting
 fig, ax = plt.subplots(figsize=(10, 8))
-ax.plot(range(len(mean_val_loss_diff)), mean_val_loss_diff, linestyle='-', linewidth=1, color='gray')
-ax.fill_between(range(len(mean_val_loss_diff)), mean_val_loss_diff - std_val_loss_diff, mean_val_loss_diff + std_val_loss_diff, color='blueviolet', alpha=0.1)
-ax.scatter(range(len(mean_val_loss_diff)), mean_val_loss_diff, s=50, c=colors_diff)
+ax.plot(val_steps, mean_val_loss_diff, linestyle='-', linewidth=1, color='gray')
+ax.fill_between(val_steps, mean_val_loss_diff - std_val_loss_diff, mean_val_loss_diff + std_val_loss_diff, color='blueviolet', alpha=0.1)
+ax.scatter(val_steps, mean_val_loss_diff, s=50, c=colors_diff)
 
-ax.set_xlabel('Epochs')
+ax.set_xlabel('Steps')
 ax.set_ylabel('Validation Loss Difference')
 ax.set_title('Mean Difference in Validation Losses')
 #ax.set_xlim([0.6, 15])
@@ -585,6 +588,11 @@ results.train_losses = results.train_losses.apply(ast.literal_eval)
 results.val_losses = results.val_losses.apply(ast.literal_eval)
 results.val_acc = results.val_acc.apply(ast.literal_eval)
 
+train_steps = list(range(0, len(results['train_losses'][0])))
+val_steps = list(range(0, (len(results['train_losses'][0]) - (len(results['train_losses'][0]) % 10)) + 1, 10))
+val_steps.append(len(results['train_losses'][0]) - 1)
+val_steps.insert(1, 1)
+
 # ============== Accuracy reparametrized model ============== #
 for model_type, g in results.groupby('model_type'):
     val_acc_all_runs = []
@@ -596,14 +604,13 @@ for model_type, g in results.groupby('model_type'):
     mean_val_acc = np.mean(val_acc_all_runs, axis=0)
     std_val_acc = np.std(val_acc_all_runs, axis=0)
 
-    epochs = range(len(mean_val_acc))
     color = colors(0 % num_colors)
 
     plt.figure(figsize=(10, 8))
-    plt.plot(epochs, mean_val_acc, color=color, label='Mean Validation Accuracy')
-    plt.fill_between(epochs, mean_val_acc - std_val_acc, mean_val_acc + std_val_acc, color=color, alpha=0.3)
+    plt.plot(val_steps, mean_val_acc, color=color, label='Mean Validation Accuracy')
+    plt.fill_between(val_steps, mean_val_acc - std_val_acc, mean_val_acc + std_val_acc, color=color, alpha=0.3)
 
-    plt.xlabel('Epochs')
+    plt.xlabel('Steps')
     plt.ylabel('Accuracy')
     plt.legend(fontsize=14)
     plt.title(f"Reparametrized {model_type}")
@@ -628,15 +635,15 @@ for model_type, g in results.groupby('model_type'):
     mean_val_losses = np.mean(val_losses_all_runs, axis=0)
     std_val_losses = np.std(val_losses_all_runs, axis=0)
 
-    epochs = range(len(mean_train_losses))
 
     fig, ax = plt.subplots(figsize=(10, 8))
-    ax.plot(epochs, mean_train_losses, color=colors(idx % num_colors), label='Mean Training Loss')
-    ax.fill_between(epochs, mean_train_losses - std_train_losses, mean_train_losses + std_train_losses, color=colors(idx % num_colors), alpha=0.3)
-    ax.plot(epochs, mean_val_losses, color=colors((idx + 2) % num_colors), label='Mean Validation Loss')
-    ax.fill_between(epochs, mean_val_losses - std_val_losses, mean_val_losses + std_val_losses, color=colors((idx + 2) % num_colors), alpha=0.3)
+    ax.plot(train_steps, mean_train_losses, color=colors(idx % num_colors), label='Mean Training Loss')
+    ax.fill_between(train_steps, mean_train_losses - std_train_losses, mean_train_losses + std_train_losses, color=colors(idx % num_colors), alpha=0.3)
+    
+    ax.plot(val_steps, mean_val_losses, color=colors((idx + 2) % num_colors), label='Mean Validation Loss')
+    ax.fill_between(val_steps, mean_val_losses - std_val_losses, mean_val_losses + std_val_losses, color=colors((idx + 2) % num_colors), alpha=0.3)
 
-    ax.set_xlabel('Epochs')
+    ax.set_xlabel('Steps')
     ax.set_ylabel('Loss')
     ax.legend(fontsize=14)
     ax.set_title(f"Reparametrized {model_type}")

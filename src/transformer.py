@@ -145,6 +145,11 @@ class TransformerSeq2Seq(nn.Module):
 ######################################################
 
 
+def number_of_parameters(params):
+    param_count = sum(x.size for x in jax.tree_util.tree_leaves(params))
+    return param_count
+
+
 def eval_init(train_dataset, eval_dataset, state):
 
     # Get initial metrics before training starts
@@ -194,32 +199,45 @@ def train_and_evaluate(train_dataset, eval_dataset, state, epochs):
 
     train_epoch_metrics = []
     val_epoch_metrics = []
+
+    train_batch_metrics = []
+    eval_batch_metrics = []
     
+    step_idx = 0
     for epoch in range(1, epochs + 1):
         #best_eval_loss = 1e6
         print(f"Epoch {epoch}...")
         
         # ============== Training ============== #
-        train_batch_metrics = []
         train_datagen = iter(train_dataset)
+
         for _ in tqdm(range(1, num_train_batches + 1)):
             batch = next(train_datagen)
             state, metrics = train_step(state, batch)
             train_batch_metrics.append(metrics)
+
+            if(step_idx % 10 == 0):
+                eval_datagen = iter(eval_dataset)
+                for _ in range(1, num_eval_batches + 1):
+                    batch = next(eval_datagen)
+                    metrics = eval_step(state, batch)
+                    eval_batch_metrics.append(metrics)
+
+            step_idx += 1
+
         print(f"Train loss = {metrics['loss']:.4f}")
         train_epoch_metrics.append(metrics)
 
         # ============== Validation ============= #
-        eval_batch_metrics = []
-        eval_datagen = iter(eval_dataset)
-        for _ in tqdm(range(1, num_eval_batches + 1)):
-            batch = next(eval_datagen)
-            metrics = eval_step(state, batch)
-            eval_batch_metrics.append(metrics)
+        last_batch = eval_dataset[-1]
+        metrics = eval_step(state, last_batch)
         print(f"Val loss = {metrics['loss']:.4f}, Val accuracy = {metrics['accuracy']:.4f}")
         val_epoch_metrics.append(metrics)
 
         print("\n")
+
+    if(len(eval_batch_metrics) % 10 != 0):
+        eval_batch_metrics.append(val_epoch_metrics[-1])
 
     return state, train_batch_metrics, eval_batch_metrics, train_epoch_metrics, val_epoch_metrics
 
