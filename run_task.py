@@ -222,10 +222,10 @@ with open(os.path.join(save_dir, 'input_sequences.pkl'), "wb") as f:
 hidden_dimension_fc = 128
 model_dim = 64
 batch_size = 32
-n_runs = 2
+n_runs = 5
 #model_types = ['only_pos', 'only_sem']
 model_types = ['only_sem', 'only_pos']
-n_epochs = 2
+n_epochs = 40
 
 results = []
 dummy_input = np.ones(shape=(batch_size, seq_len), dtype=np.int8)
