@@ -50,6 +50,7 @@ if(task == 1):
         parser.add_argument('--embedding_model', type=str, required=True, help='Embedding model')
         parser.add_argument('--seed', type=int, required=True, help='Seed value')
         parser.add_argument('--distr_param', type=str, required=True, help='Distribution parameter')
+        parser.add_argument('--temperature', type=str, required=True, help='Temperature')
         args = parser.parse_args()
 
         num_samples = args.num_samples
@@ -66,7 +67,11 @@ if(task == 1):
         except ValueError:
             distr_param = float(args.distr_param)
 
-        n_classes = vocab_size + 1
+        try:
+            temperature = int(args.temperature)
+        except ValueError:
+            temperature = float(args.temperature)
+
 
     else:
 
@@ -79,8 +84,8 @@ if(task == 1):
         embedding_path = 'Datasets/glove/glove.6B.50d.txt'
         embedding_model = 'glove.6B.50d'
         seed = 42
-        distr_param = 2
-        n_classes = vocab_size + 1
+        distr_param = 1.1
+        temperature = 2
 
     
 
@@ -103,6 +108,7 @@ elif(task == 2):
         parser.add_argument('--embedding_model', type=str, required=True, help='Embedding model')
         parser.add_argument('--seed', type=int, required=True, help='Seed value')
         parser.add_argument('--distr_param', type=str, required=True, help='Distribution parameter')
+        parser.add_argument('--temperature', type=str, required=True, help='Temperature')
         args = parser.parse_args()
 
         num_samples = args.num_samples
@@ -118,8 +124,13 @@ elif(task == 2):
             distr_param = int(args.distr_param)
         except ValueError:
             distr_param = float(args.distr_param)
+
+        try:
+            temperature = int(args.temperature)
+        except ValueError:
+            temperature = float(args.temperature)
             
-        n_classes = 2
+
 
     else:
 
@@ -133,7 +144,6 @@ elif(task == 2):
         embedding_model = 'glove.6B.50d'
         seed = 42
         distr_param = 2
-        n_classes = 2
 
 
     file_name = f"primitive_NLP_dataset_n_smpl{num_samples}__seq_len{sequence_length}__cont_win{context_window}__" \
@@ -157,7 +167,6 @@ elif(task == 3):
         sequence_length = args.sequence_length
         vocab_size = args.vocab_size
         seed = args.seed
-        n_classes = 7
     
     else:
         
@@ -165,7 +174,6 @@ elif(task == 3):
         sequence_length = 10
         vocab_size = 15
         seed = 42
-        n_classes = 7
 
 
     file_name = f'NextHistogramDataset_n_smpl{num_samples}__seq_len{sequence_length}__v_size{vocab_size}__seed{seed}'
@@ -203,7 +211,7 @@ val_size = len(dataset) - train_size
 train_dataset, val_dataset = random_split(dataset, [train_size, val_size], generator=generator)
 
 train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True, generator=generator)
-val_dataloader = DataLoader(val_dataset, batch_size=64, shuffle=True, generator=generator)
+val_dataloader = DataLoader(val_dataset, batch_size=val_size, shuffle=True, generator=generator)
 
 # Convert dataset to JAX arrays
 train_dataset = [convert_batch_to_jax(batch) for batch in train_dataloader]
@@ -224,7 +232,7 @@ with open(os.path.join(save_dir, 'input_sequences.pkl'), "wb") as f:
 hidden_dimension_fc = 128
 model_dim = 64
 batch_size = 32
-n_runs = 1
+n_runs = 2
 #model_types = ['only_pos', 'only_sem']
 model_types = ['only_sem', 'only_pos']
 n_epochs = 2
@@ -276,6 +284,8 @@ for model_type in model_types:
 
     print('Done')
 
+results = pd.DataFrame(results)
+results.dropna(how='all', inplace=True)
 pd.DataFrame(results).to_csv(os.path.join(save_dir, 'frozen_transformer_result.csv'), index=False)
 
 
@@ -324,4 +334,6 @@ for r in range(n_runs):
 
         print('Done')
 
+reparameterized_transformers = pd.DataFrame(reparameterized_transformers)
+reparameterized_transformers.dropna(how='all', inplace=True)
 pd.DataFrame(reparameterized_transformers).to_csv(os.path.join(save_dir, 'reparameterized_transformers.csv'), index=False)

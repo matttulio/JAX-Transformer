@@ -14,15 +14,15 @@ from flax.traverse_util import flatten_dict
 
 plt.style.use('science')
 
-case_study = 1  # Plot results for primitive NLP dataset for next token prediction
-#case_study = 2   # Plot results for primitive NLP dataset for summing task
+#case_study = 1  # Plot results for primitive NLP dataset for next token prediction
+case_study = 2   # Plot results for primitive NLP dataset for summing task
 #case_study = 3  # Plot results for Next Histogram Task dataset
 
 print("\n")
 
 if(case_study == 1):
 
-    num_samples = 200000
+    num_samples = 50000
     sequence_length = 10
     context_window = 3
     vocab_size = round(sequence_length * 7.8125)
@@ -32,6 +32,7 @@ if(case_study == 1):
     embedding_model = 'glove.6B.50d'
     seed = 42
     distr_param = 1.1
+    temperature = 2
     n_classes = vocab_size + 1
 
     rs = np.random.RandomState(seed)
@@ -39,13 +40,13 @@ if(case_study == 1):
 
     print("Plotting results for primitive NLP dataset for next token prediction...")
     print(f"The parameters of the dataset are: num_samples={num_samples}, sequence_lenght={sequence_length}, context_window={context_window}")
-    print(f"vocab_size={vocab_size}, embedding_dim={embedding_dim}, embedding_type={embedding_model}, seed={seed}, distribution_parameter={distr_param}\n")
+    print(f"vocab_size={vocab_size}, embedding_dim={embedding_dim}, embedding_type={embedding_model}, seed={seed}, distribution_parameter={distr_param}, temperature={temperature}\n")
 
 
     save_dir = f"Empirics/primitive_NLP_NTP_dataset_n_smpl{num_samples}__seq_len{sequence_length}__cont_win{context_window}__" \
     + f"v_size{vocab_size}__emb_dim{embedding_dim}__emb_type{embedding_model}__seed{seed}__d_par{distr_param}/figures"
     retrieve_dir = f"Empirics/primitive_NLP_NTP_dataset_n_smpl{num_samples}__seq_len{sequence_length}__cont_win{context_window}__" \
-    + f"v_size{vocab_size}__emb_dim{embedding_dim}__emb_type{embedding_model}__seed{seed}__d_par{distr_param}"
+    + f"v_size{vocab_size}__emb_dim{embedding_dim}__emb_type{embedding_model}__seed{seed}__d_par{distr_param}__temp{temperature}"
 
 elif(case_study == 2):
 
@@ -59,6 +60,7 @@ elif(case_study == 2):
     embedding_model = 'glove.6B.50d'
     seed = 42
     distr_param = 1.1
+    temperature = 2
     n_classes = 2
 
     rs = np.random.RandomState(seed)
@@ -66,12 +68,12 @@ elif(case_study == 2):
 
     print("Plotting result for primitive NLP dataset for next token prediction...")
     print(f"The parameters of the dataset are: num_samples={num_samples}, sequence_lenght={sequence_length}, context_window={context_window}")
-    print(f"vocab_size={vocab_size}, embedding_dim={embedding_dim}, embedding_type={embedding_model}, seed={seed}, distribution_parameter={distr_param}\n")
+    print(f"vocab_size={vocab_size}, embedding_dim={embedding_dim}, embedding_type={embedding_model}, seed={seed}, distribution_parameter={distr_param}, temperature={temperature}\n")
 
     save_dir = f"Empirics/primitive_NLP_dataset_n_smpl{num_samples}__seq_len{sequence_length}__cont_win{context_window}__" \
     + f"v_size{vocab_size}__emb_dim{embedding_dim}__emb_type{embedding_model}__seed{seed}__d_par{distr_param}/figures"
     retrieve_dir = f"Empirics/primitive_NLP_dataset_n_smpl{num_samples}__seq_len{sequence_length}__cont_win{context_window}__" \
-    + f"v_size{vocab_size}__emb_dim{embedding_dim}__emb_type{embedding_model}__seed{seed}__d_par{distr_param}"
+    + f"v_size{vocab_size}__emb_dim{embedding_dim}__emb_type{embedding_model}__seed{seed}__d_par{distr_param}__temp{temperature}"
 
 
 elif(case_study == 3):

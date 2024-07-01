@@ -14,8 +14,8 @@ print("PROPERTIES OF THE PRIMITIVE NLP NTP DATASET")
 print("\n")
 
 data_dir = 'Datasets/Data'
-file_name = 'primitive_NLP_NTP_dataset_n_smpl50000__seq_len10__cont_win10__'\
-        'v_size78__emb_dim50__emb_typeglove.6B.50d__seed42__d_par1.1.pkl'
+file_name = 'primitive_NLP_NTP_dataset_n_smpl200000__seq_len10__cont_win10__'\
+        'v_size78__emb_dim50__emb_typeglove.6B.50d__seed42__d_par1.1__temp2.pkl'
 
 data_path = os.path.join(data_dir, file_name)
 
@@ -63,7 +63,7 @@ plt.ylabel('Frequency', fontsize=14)
 #plt.yscale('log')
 plt.legend(fontsize=14)
 plt.title('Distribution of the tokens', fontsize=16)
-plt.show()
+#plt.show()
 plt.clf()
 plt.close()
 
@@ -92,7 +92,7 @@ plt.close()
 print("Fit the distribution parameters")
 for i, param in enumerate(popt):
     print(f"Optimal parameter {i+1}: {param:.2f}")
-print()
+
 
 # Compute the fitted values
 fitted_values = func(x_values, *popt)

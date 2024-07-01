@@ -50,7 +50,7 @@ class NextHistogramDataset(Dataset):
     
     
 class PrimitiveNLP(Dataset):
-    def __init__(self, num_samples, sequence_length, context_window, vocab, embedding_dim, embedding_path = None, seed = 42, distr_param = 1.1):
+    def __init__(self, num_samples, sequence_length, context_window, vocab, embedding_dim, embedding_path = None, seed = 42, distr_param = 1.1, temperature = 2):
 
         """
         Generate a dataset for next token prediction that emulates natural language.
@@ -162,7 +162,6 @@ class PrimitiveNLP(Dataset):
 
                     # Calculate similarity with previous tokens and select the most similar one
                     similarities = [torch.dot(embedding_matrix[k], combined_embedding) for k in range(self.vocab_size)]
-                    temperature = 2
                     similarities = torch.tensor([similarities]) / temperature
                     probs = nn.functional.softmax(similarities[0], dim=0)
                     probs = probs.numpy()
@@ -241,7 +240,7 @@ class PrimitiveNLP(Dataset):
     
     
 class PrimitiveNLP_NTP(Dataset):
-    def __init__(self, num_samples, sequence_length, context_window, vocab, embedding_dim, embedding_path = None, seed = 42, distr_param = 1.1):
+    def __init__(self, num_samples, sequence_length, context_window, vocab, embedding_dim, embedding_path = None, seed = 42, distr_param = 1.1, temperature = 2):
 
         """
         Generate a dataset for next token prediction that emulates natural language.
@@ -353,7 +352,6 @@ class PrimitiveNLP_NTP(Dataset):
 
                     # Calculate similarity with previous tokens and select the most similar one
                     similarities = [torch.dot(embedding_matrix[k], combined_embedding) for k in range(self.vocab_size)]
-                    temperature = 2
                     similarities = torch.tensor([similarities]) / temperature
                     probs = nn.functional.softmax(similarities[0], dim=0)
                     probs = probs.numpy()

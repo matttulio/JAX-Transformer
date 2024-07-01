@@ -22,17 +22,18 @@ if(desire == 1):
     embedding_model = 'glove.6B.50d'
     seed = 42
     distr_param = 1.1
+    temperature = 2
 
     if(embedding_path == None):
         embedding_model = 'Rand'
 
     save_path = "Datasets/Data"
     file_name = f"primitive_NLP_NTP_dataset_n_smpl{num_samples}__seq_len{sequence_length}__cont_win{context_window}__" \
-    + f"v_size{vocab_size}__emb_dim{embedding_dim}__emb_type{embedding_model}__seed{seed}__d_par{distr_param}.pkl"
+    + f"v_size{vocab_size}__emb_dim{embedding_dim}__emb_type{embedding_model}__seed{seed}__d_par{distr_param}__temp{temperature}.pkl"
 
     print(f"number of samples = {num_samples}, sequence lenght = {sequence_length}, context_window = {context_window},")
     print(f"vocabulary size = {vocab_size}, embedding dimension = {embedding_dim}, embedding type = {embedding_model},")
-    print(f"seed = {seed}, distribution's parameter = {distr_param}")
+    print(f"seed = {seed}, distribution's parameter = {distr_param}, temperature = {temperature}")
     print("\n")
 
     print("Building Primitive NLP Next Token Prediction Dataset...")
@@ -52,17 +53,18 @@ elif(desire == 2):
     embedding_model = 'glove.6B.50d'
     seed = 42
     distr_param = 1.1
+    temperature = 2
 
     if(embedding_path == None):
         embedding_model = 'Rand'
 
     save_path = "Datasets/Data"
     file_name = f"primitive_NLP_dataset_n_smpl{num_samples}__seq_len{sequence_length}__cont_win{context_window}__" \
-    + f"v_size{vocab_size}__emb_dim{embedding_dim}__emb_type{embedding_model}__seed{seed}__d_par{distr_param}.pkl"
+    + f"v_size{vocab_size}__emb_dim{embedding_dim}__emb_type{embedding_model}__seed{seed}__d_par{distr_param}__temp{temperature}.pkl"
 
     print(f"number of samples = {num_samples}, sequence lenght = {sequence_length}, context_window = {context_window},")
     print(f"vocabulary size = {vocab_size}, embedding dimension = {embedding_dim}, embedding type = {embedding_model},")
-    print(f"seed = {seed}, distribution's parameter = {distr_param}")
+    print(f"seed = {seed}, distribution's parameter = {distr_param}, temperature = {temperature}")
     print("\n")
 
     print("Building Primitive NLP Dataset...")
