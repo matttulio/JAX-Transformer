@@ -236,7 +236,7 @@ def train_and_evaluate(train_dataset, eval_dataset, state, epochs):
 
         print("\n")
 
-    if(len(eval_batch_metrics) % 10 != 0):
+    if((len(eval_batch_metrics) - 1) % 10 != 0):
         eval_batch_metrics.append(val_epoch_metrics[-1])
 
     return state, train_batch_metrics, eval_batch_metrics, train_epoch_metrics, val_epoch_metrics

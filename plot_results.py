@@ -108,9 +108,14 @@ results.val_acc = results.val_acc.apply(ast.literal_eval)
 n_runs = np.max(results['run']) + 1
 train_steps = list(range(0, len(results['train_losses'][0])))
 val_steps = list(range(0, (len(results['train_losses'][0]) - (len(results['train_losses'][0]) % 10)) + 1, 10))
-val_steps.append(len(results['train_losses'][0]) - 1)
+if((len(results['train_losses'][0]) - 1) % 10 != 0):
+    val_steps.append(len(results['train_losses'][0]) - 1)
 val_steps.insert(1, 1)
 
+# print(len(results['train_losses'][0]), len(results['val_losses'][0]))
+# print(train_steps)
+# print(val_steps)
+# exit()
 # ============== Validation accuracy vs steps ============== #
 idx = 0
 num_colors = n_runs
@@ -590,7 +595,8 @@ results.val_acc = results.val_acc.apply(ast.literal_eval)
 
 train_steps = list(range(0, len(results['train_losses'][0])))
 val_steps = list(range(0, (len(results['train_losses'][0]) - (len(results['train_losses'][0]) % 10)) + 1, 10))
-val_steps.append(len(results['train_losses'][0]) - 1)
+if((len(results['train_losses'][0]) - 1) % 10 != 0):
+    val_steps.append(len(results['train_losses'][0]) - 1)
 val_steps.insert(1, 1)
 
 # ============== Accuracy reparametrized model ============== #
