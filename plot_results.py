@@ -14,15 +14,15 @@ from flax.traverse_util import flatten_dict
 
 plt.style.use('science')
 
-case_study = 1  # Plot results for primitive NLP dataset for next token prediction
-#case_study = 2   # Plot results for primitive NLP dataset for summing task
+#case_study = 1  # Plot results for primitive NLP dataset for next token prediction
+case_study = 2   # Plot results for primitive NLP dataset for summing task
 #case_study = 3  # Plot results for Next Histogram Task dataset
 
 print("\n")
 
 if(case_study == 1):
 
-    num_samples = 50000
+    num_samples = 200000
     sequence_length = 10
     context_window = 10
     vocab_size = round(sequence_length * 7.8125)
@@ -50,9 +50,9 @@ if(case_study == 1):
 
 elif(case_study == 2):
 
-    num_samples = 50000
+    num_samples = 200000
     sequence_length = 10
-    context_window = 3
+    context_window = 10
     vocab_size = round(sequence_length * 7.8125)
     vocab = list(range(vocab_size))
     embedding_dim = 50
@@ -78,7 +78,7 @@ elif(case_study == 2):
 
 elif(case_study == 3):
 
-    num_samples = 200000
+    num_samples = 50000
     sequence_length = 10
     vocab_size = 15
     seed = 42
@@ -102,20 +102,33 @@ select_run = 0
 # ============== Results frozen transformer ============== #
 results = pd.read_csv(os.path.join(retrieve_dir, 'frozen_transformer_result.csv'))
 results.train_losses = results.train_losses.apply(ast.literal_eval)
+n_points = len(results['train_losses'][0])
+skip = 1
+results.train_losses = results.train_losses.apply(lambda x: x[::skip])
 results.val_losses = results.val_losses.apply(ast.literal_eval)
 results.val_acc = results.val_acc.apply(ast.literal_eval)
 
 n_runs = np.max(results['run']) + 1
-train_steps = list(range(0, len(results['train_losses'][0])))
-val_steps = list(range(0, (len(results['train_losses'][0]) - (len(results['train_losses'][0]) % 10)) + 1, 10))
-if((len(results['train_losses'][0]) - 1) % 10 != 0):
-    val_steps.append(len(results['train_losses'][0]) - 1)
+train_steps = list(range(0, n_points, skip))
+val_steps = list(range(0, (n_points - (n_points % 10)) + 1, 10))
+if((n_points - 1) % 10 != 0):
+    val_steps.append(n_points - 1)
 val_steps.insert(1, 1)
 
-# print(len(results['train_losses'][0]), len(results['val_losses'][0]))
-# print(train_steps)
-# print(val_steps)
-# exit()
+# Set tick sizes globally
+plt.rcParams['xtick.major.size'] = 10
+plt.rcParams['ytick.major.size'] = 10
+plt.rcParams['xtick.minor.size'] = 5
+plt.rcParams['ytick.minor.size'] = 5
+
+# Set font sizes globally
+plt.rcParams['axes.labelsize'] = 16  # for xlabel and ylabel
+plt.rcParams['axes.titlesize'] = 20  # for title
+plt.rcParams['xtick.labelsize'] = 14  # for xticks
+plt.rcParams['ytick.labelsize'] = 14  # for yticks
+plt.rcParams['legend.fontsize'] = 16  # for legend
+
+
 # ============== Validation accuracy vs steps ============== #
 idx = 0
 num_colors = n_runs
@@ -133,22 +146,22 @@ for model_type, g in results.groupby('model_type'):
 
     color = colors(idx % num_colors)
     plt.figure(figsize=(10, 8))
-    plt.plot(val_steps, mean_acc, color=color, label=f'Mean Validation Acc')
-    plt.fill_between(val_steps, mean_acc - std_acc, mean_acc + std_acc, color=color, alpha=0.2)
+    plt.plot(val_steps, mean_acc, color=color, label='Mean Validation Acc')
+    plt.fill_between(val_steps, mean_acc - std_acc, mean_acc + std_acc, color=color, alpha=0.2, label='Error')
     #plt.axhline(y=0.8919672924086934, color='r', linestyle='--', label='Baseline')
 
     print(model_type, np.mean(mean_acc), np.std(mean_acc))
 
     plt.xlabel('Steps')
     plt.ylabel('Accuracy')
-    plt.legend(fontsize=14)
+    #plt.yscale('log')
+    plt.xscale('symlog') 
+    plt.legend()
     plt.title("Only Positional" if model_type == "only_pos" else "Only Semantic")
-    plt.savefig(os.path.join(save_dir, f'accuracy_{model_type}.pdf'))
+    plt.savefig(os.path.join(save_dir, f'accuracy_{model_type}.png'), format='png', dpi=200)
     plt.clf()
     plt.close()
     #plt.show()
-#exit()
-
 
 # ============== Val and Train loss against steps ============== #
 idx = 0
@@ -172,17 +185,19 @@ for model_type, g in results.groupby('model_type'):
     color = colors(idx % num_colors)
     # Plot mean and std for train losses
     ax.plot(train_steps, mean_train_losses, color=color, label='Mean Train Loss')
-    ax.fill_between(train_steps, mean_train_losses - std_train_losses, mean_train_losses + std_train_losses, color=color, alpha=0.2)
+    ax.fill_between(train_steps, mean_train_losses - std_train_losses, mean_train_losses + std_train_losses, color=color, alpha=0.2, label='Error Train Loss')
     
     # Plot mean and std for validation losses
     ax.plot(val_steps, mean_val_losses, color=colors((idx + 2) % num_colors), label='Mean Val Loss')
-    ax.fill_between(val_steps, mean_val_losses - std_val_losses, mean_val_losses + std_val_losses, color=colors((idx + 2) % num_colors), alpha=0.2)
+    ax.fill_between(val_steps, mean_val_losses - std_val_losses, mean_val_losses + std_val_losses, color=colors((idx + 2) % num_colors), alpha=0.2, label='Error Val Loss')
     
     ax.set_xlabel('Steps')
     ax.set_ylabel('Loss')
-    ax.legend(fontsize=14)
+    #ax.set_yscale('log')
+    ax.set_xscale('symlog') 
+    ax.legend()
     ax.set_title("Only Positional" if model_type == "only_pos" else "Only Semantic")
-    plt.savefig(os.path.join(save_dir, f'loss_{model_type}.pdf'))
+    plt.savefig(os.path.join(save_dir, f'loss_{model_type}.png'), format='png', dpi=200)
     plt.clf()
     plt.close()
     #plt.show()
@@ -212,21 +227,28 @@ std_val_loss_diff = np.std(all_val_loss_diffs, axis=0)
 
 # Normalize differences for coloring
 limit = np.min((np.abs(np.max(mean_val_loss_diff)), np.abs(np.min(mean_val_loss_diff))))
-norm = Normalize(vmin=-0.001 * limit, vmax=0.001*limit)
+norm = Normalize(vmin=-0.1 * limit, vmax=0.1*limit)
 colors_diff = [cmap_diff(norm(val)) for val in mean_val_loss_diff]
 
 # Plotting
 fig, ax = plt.subplots(figsize=(10, 8))
-ax.plot(val_steps, mean_val_loss_diff, linestyle='-', linewidth=1, color='gray')
-ax.fill_between(val_steps, mean_val_loss_diff - std_val_loss_diff, mean_val_loss_diff + std_val_loss_diff, color='blueviolet', alpha=0.1)
+
+ax.fill_between(val_steps, mean_val_loss_diff - std_val_loss_diff, mean_val_loss_diff + std_val_loss_diff, color='blueviolet', alpha=0.1, label='Error Diff')
 ax.scatter(val_steps, mean_val_loss_diff, s=50, c=colors_diff)
+ax.plot(val_steps, mean_val_loss_diff, linestyle='-', linewidth=1, color='gray', alpha=0.5, label='Mean Loss difference')
+
+sm = plt.cm.ScalarMappable(cmap=cmap_diff, norm=norm)
+sm.set_array([])  # Only needed for the color bar
+cbar = fig.colorbar(sm, ax=ax)
+cbar.set_label('Validation Loss Difference')
 
 ax.set_xlabel('Steps')
 ax.set_ylabel('Validation Loss Difference')
 ax.set_title('Mean Difference in Validation Losses')
-#ax.set_xlim([0.6, 15])
-#ax.set_ylim([-0.0001, 0.0001])
-plt.savefig(os.path.join(save_dir, 'mean_val_loss_difference_only_pos_only_sem.pdf'))
+ax.set_xscale('symlog')
+#ax.set_yscale('log')
+plt.legend()
+plt.savefig(os.path.join(save_dir, 'mean_val_loss_difference_only_pos_only_sem.png'), format='png', dpi=200)
 plt.clf()
 plt.close()
 
@@ -324,8 +346,8 @@ def visualize_attention_matrix(x, transformer, ax, cmap='tab20b'):
             for j in range(data.shape[1]):
                 ax.text(j, k, f'{int(np.round(data[k, j]*100))}', ha='center', va='center', color='white')
 
-        ax.set_xticks(np.arange(len(x)), [vocab[a] for a in x], fontsize=7)
-        ax.set_yticks(np.arange(len(x)), [vocab[a] for a in x], fontsize=7)
+        ax.set_xticks(np.arange(len(x)), [vocab[a] for a in x], fontsize=10)
+        ax.set_yticks(np.arange(len(x)), [vocab[a] for a in x], fontsize=10)
         ax.tick_params(axis='x', which='both', bottom=False, top=True)
         ax.xaxis.tick_top()
 
@@ -367,6 +389,13 @@ plt.rcParams['ytick.major.size'] = 0
 plt.rcParams['xtick.minor.size'] = 0
 plt.rcParams['ytick.minor.size'] = 0
 
+# Set font sizes globally
+plt.rcParams['axes.labelsize'] = 16  # for xlabel and ylabel
+plt.rcParams['axes.titlesize'] = 20  # for title
+plt.rcParams['xtick.labelsize'] = 10  # for xticks
+plt.rcParams['ytick.labelsize'] = 10  # for yticks
+plt.rcParams['legend.fontsize'] = 16  # for legend
+
 fig, axes = plt.subplots(figsize=(15,8), ncols=3, nrows=2)
 cmap = custom_cmap# 'Paired'
 data = np.random.random((10, 10))
@@ -375,12 +404,12 @@ for i, transformer in enumerate(transformers):
   axes[i,0].set_ylabel("Positional" if transformer.attention_input == 'only_pos' else "Semantic", fontsize=14)
   print(transformer.attention_input)
   for j, x in enumerate(xs):
-    axes[0,j].set_title(f"Example Sequence {j+1}",fontsize=10)
+    axes[0,j].set_title(f"Example Sequence {j+1}")
     visualize_attention_matrix(x, transformer, axes[i,j], cmap=cmap)
 
 norm = Normalize(vmin=0, vmax=1.0)
 cbar = fig.colorbar(im1, ax=axes, norm=norm)
-cbar.set_label('Attention Value',fontsize=12)
+cbar.set_label('Attention Value', fontsize=16)
 plt.savefig(os.path.join(save_dir, f'tiny_example.pdf'))
 plt.clf()
 plt.close()
@@ -417,7 +446,7 @@ for model_type, g in results.groupby('model_type'):
     for i, transformer in enumerate(transformers):
       print(transformer.attention_input)
       for j, x in enumerate(xs):
-        axes[0,j].set_title(f"Example Sequence {j+1}",fontsize=10)
+        axes[0,j].set_title(f"Example Sequence {j+1}")
         visualize_attention_matrix(x, transformer, axes[i,j], cmap=cmap)
 
     axes[0,0].set_ylabel(r'$\theta_{sem}$' if orig_trans.attention_input == 'only_sem' else r'$\theta_{pos}$')
@@ -425,13 +454,28 @@ for model_type, g in results.groupby('model_type'):
 
     norm = Normalize(vmin=0, vmax=1.0)
     cbar = fig.colorbar(im1, ax=axes, norm=norm)
-    cbar.set_label('Attention Value',fontsize=12)
+    cbar.set_label('Attention Value',fontsize=16)
     plt.savefig(os.path.join(save_dir, f'run_{r}_training_comparison_{orig_trans.attention_input}.pdf'),bbox_inches='tight')
     plt.clf()
     plt.close()
     #plt.show()
 
 plt.rcdefaults()
+plt.style.use('science')
+
+# Set tick sizes globally
+plt.rcParams['xtick.major.size'] = 10
+plt.rcParams['ytick.major.size'] = 10
+plt.rcParams['xtick.minor.size'] = 5
+plt.rcParams['ytick.minor.size'] = 5
+
+# Set font sizes globally
+plt.rcParams['axes.labelsize'] = 16  # for xlabel and ylabel
+plt.rcParams['axes.titlesize'] = 20  # for title
+plt.rcParams['xtick.labelsize'] = 14  # for xticks
+plt.rcParams['ytick.labelsize'] = 14  # for yticks
+plt.rcParams['legend.fontsize'] = 16  # for legend
+
 # ============== Distance between the models's parameters ============== #
 def model_distance(model1, model2, only_zeros=False):
     params1 = [param for param in model1.parameters()]
@@ -580,9 +624,9 @@ if(case_study == 1):
         ax.set_xlabel('Token Rank')
         ax.set_ylabel('Frequency')
         ax.set_title(f'Input vs Output Token Frequency Distributions ({model_type})')
-        ax.legend(fontsize=14)
+        ax.legend()
 
-        plt.savefig(os.path.join(save_dir, f'mean_distr_predict_vs_label_{model_type}.pdf'))
+        plt.savefig(os.path.join(save_dir, f'mean_distr_predict_vs_label_{model_type}.png'), format='png', dpi=200)
         plt.clf()
         plt.close()
 
@@ -590,13 +634,16 @@ if(case_study == 1):
 
 results = pd.read_csv(os.path.join(retrieve_dir, 'reparameterized_transformers.csv'))
 results.train_losses = results.train_losses.apply(ast.literal_eval)
+n_points = len(results['train_losses'][0])
+results.train_losses = results.train_losses.apply(lambda x: x[::skip])
 results.val_losses = results.val_losses.apply(ast.literal_eval)
 results.val_acc = results.val_acc.apply(ast.literal_eval)
 
-train_steps = list(range(0, len(results['train_losses'][0])))
-val_steps = list(range(0, (len(results['train_losses'][0]) - (len(results['train_losses'][0]) % 10)) + 1, 10))
-if((len(results['train_losses'][0]) - 1) % 10 != 0):
-    val_steps.append(len(results['train_losses'][0]) - 1)
+n_runs = np.max(results['run']) + 1
+train_steps = list(range(0, n_points, skip))
+val_steps = list(range(0, (n_points - (n_points % 10)) + 1, 10))
+if((n_points - 1) % 10 != 0):
+    val_steps.append(n_points - 1)
 val_steps.insert(1, 1)
 
 # ============== Accuracy reparametrized model ============== #
@@ -614,13 +661,13 @@ for model_type, g in results.groupby('model_type'):
 
     plt.figure(figsize=(10, 8))
     plt.plot(val_steps, mean_val_acc, color=color, label='Mean Validation Accuracy')
-    plt.fill_between(val_steps, mean_val_acc - std_val_acc, mean_val_acc + std_val_acc, color=color, alpha=0.3)
+    plt.fill_between(val_steps, mean_val_acc - std_val_acc, mean_val_acc + std_val_acc, color=color, alpha=0.3, label='Error')
 
     plt.xlabel('Steps')
     plt.ylabel('Accuracy')
-    plt.legend(fontsize=14)
+    plt.legend()
     plt.title(f"Reparametrized {model_type}")
-    plt.savefig(os.path.join(save_dir, f'accuracy_reparametrized_{model_type}.pdf'))
+    plt.savefig(os.path.join(save_dir, f'accuracy_reparametrized_{model_type}.png'), format='png', dpi=200)
     plt.clf()
     plt.close()
     #plt.show()
@@ -644,16 +691,17 @@ for model_type, g in results.groupby('model_type'):
 
     fig, ax = plt.subplots(figsize=(10, 8))
     ax.plot(train_steps, mean_train_losses, color=colors(idx % num_colors), label='Mean Training Loss')
-    ax.fill_between(train_steps, mean_train_losses - std_train_losses, mean_train_losses + std_train_losses, color=colors(idx % num_colors), alpha=0.3)
+    ax.fill_between(train_steps, mean_train_losses - std_train_losses, mean_train_losses + std_train_losses, color=colors(idx % num_colors), alpha=0.3, label='Error Train')
     
     ax.plot(val_steps, mean_val_losses, color=colors((idx + 2) % num_colors), label='Mean Validation Loss')
-    ax.fill_between(val_steps, mean_val_losses - std_val_losses, mean_val_losses + std_val_losses, color=colors((idx + 2) % num_colors), alpha=0.3)
+    ax.fill_between(val_steps, mean_val_losses - std_val_losses, mean_val_losses + std_val_losses, color=colors((idx + 2) % num_colors), alpha=0.3, label='Error Val')
 
     ax.set_xlabel('Steps')
     ax.set_ylabel('Loss')
-    ax.legend(fontsize=14)
+    ax.set_ylim(0, 0.5)
+    ax.legend()
     ax.set_title(f"Reparametrized {model_type}")
-    plt.savefig(os.path.join(save_dir, f'loss_reparametrized_{model_type}.pdf'))
+    plt.savefig(os.path.join(save_dir, f'loss_reparametrized_{model_type}.png'), format='png', dpi=200)
     plt.clf()
     plt.close()
     #plt.show()

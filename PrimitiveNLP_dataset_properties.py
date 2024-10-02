@@ -140,17 +140,18 @@ for i in vocab_y:
     h = (h / total_sequences) * 100  # Calculate the percentage
     distr.append(h)
 
-plt.rcParams['xtick.major.size'] = 5
-plt.rcParams['ytick.major.size'] = 5
+plt.rcParams['xtick.major.size'] = 10
+plt.rcParams['ytick.major.size'] = 10
 plt.rcParams['xtick.minor.size'] = 0
-plt.rcParams['ytick.minor.size'] = 2
+plt.rcParams['ytick.minor.size'] = 5
 
 plt.figure(figsize=(12, 8))
 plt.bar(vocab_y, distr, color='skyblue')
 plt.xticks([0, 1], ['0', '1'], fontsize=14)
-plt.xlabel('Labels', fontsize=14)
-plt.ylabel('Frequency', fontsize=14)
-plt.title('Distribution of the labels', fontsize=16)
+plt.yticks(fontsize=14)
+plt.xlabel('Labels', fontsize=16)
+plt.ylabel('Percentage', fontsize=16)
+plt.title('Distribution of the labels', fontsize=18)
 plt.savefig('Datasets/Data/Properties/distribution_of_labelsSUM.pdf', bbox_inches='tight')
 plt.close()
 
@@ -198,19 +199,19 @@ def func(x, k, b):
 
 # Plot the data
 plt.figure(figsize=(12, 8))
-plt.plot(x_values, distr, '-', color='blue', linewidth=2, label = 'Observed distribution' )
+plt.plot(x_values, distr, '-', color='blue', linewidth=3, label = 'Observed distribution' )
 
 # Fit the function to the data
 popt, pcov = curve_fit(func, x_values, distr, (1, 2.7))
 
 # Plot the fitted function
-plt.plot(x_values, func(x_values, *popt), color='skyblue', linewidth=2, label=f'Zipf`s Law:  k={popt[0]:.2f}, {popt[1]:.2f}')
+plt.plot(x_values, func(x_values, *popt), color='skyblue', linewidth=3, label=f'Zipf`s Law:  k={popt[0]:.2f}, {popt[1]:.2f}')
 
 # Plot settings
-plt.xlabel('Degree', fontsize=14)
-plt.ylabel('Frequency', fontsize=14)
-plt.title('Distribution of the tokens', fontsize=16)
-plt.legend(fontsize=14)
+plt.xlabel('Degree', fontsize=16)
+plt.ylabel('Frequency', fontsize=16)
+plt.title('Distribution of the tokens', fontsize=18)
+plt.legend(fontsize=15)
 plt.savefig('Datasets/Data/Properties/distribution_of_tokensSUM.pdf', bbox_inches='tight')
 plt.close()
 
