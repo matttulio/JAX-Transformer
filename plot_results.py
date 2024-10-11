@@ -15,8 +15,8 @@ from flax.traverse_util import flatten_dict
 plt.style.use('science')
 
 #case_study = 1  # Plot results for primitive NLP dataset for next token prediction
-case_study = 2   # Plot results for primitive NLP dataset for summing task
-#case_study = 3  # Plot results for Next Histogram Task dataset
+#case_study = 2   # Plot results for primitive NLP dataset for summing task
+case_study = 3  # Plot results for Next Histogram Task dataset
 
 print("\n")
 
@@ -52,7 +52,7 @@ elif(case_study == 2):
 
     num_samples = 200000
     sequence_length = 10
-    context_window = 10
+    context_window = 3
     vocab_size = round(sequence_length * 7.8125)
     vocab = list(range(vocab_size))
     embedding_dim = 50
@@ -78,7 +78,7 @@ elif(case_study == 2):
 
 elif(case_study == 3):
 
-    num_samples = 50000
+    num_samples = 200000
     sequence_length = 10
     vocab_size = 15
     seed = 42
@@ -364,7 +364,15 @@ custom_cmap = ListedColormap(selected_colors)
 with open(os.path.join(retrieve_dir, 'input_sequences.pkl'), "rb") as file:
        input_sequences = cloudpickle.load(file)
 
-xs = [input_sequences[0][0].tolist(), input_sequences[0][1].tolist(), input_sequences[0][2].tolist()]
+if case_study == 3:
+
+    xs = [[10, 4, 4, 10, 2, 3, 4, 4, 10, 2], 
+          [14, 14, 14, 14, 11, 11, 2, 2, 2, 2], 
+          [5, 6, 0, 3, 6, 6, 6, 0, 3, 6]]
+
+else:
+    
+    xs = [input_sequences[0][0].tolist(), input_sequences[0][1].tolist(), input_sequences[0][2].tolist()]
 
 print(f"n_classes = ", n_classes)
 
@@ -623,6 +631,8 @@ if(case_study == 1):
 
         ax.set_xlabel('Token Rank')
         ax.set_ylabel('Frequency')
+        #ax.set_yscale('log')
+        ax.set_ylim(0,0.165)
         ax.set_title(f'Input vs Output Token Frequency Distributions ({model_type})')
         ax.legend()
 
@@ -698,7 +708,7 @@ for model_type, g in results.groupby('model_type'):
 
     ax.set_xlabel('Steps')
     ax.set_ylabel('Loss')
-    ax.set_ylim(0, 0.5)
+    ax.set_ylim(1, 2)
     ax.legend()
     ax.set_title(f"Reparametrized {model_type}")
     plt.savefig(os.path.join(save_dir, f'loss_reparametrized_{model_type}.png'), format='png', dpi=200)

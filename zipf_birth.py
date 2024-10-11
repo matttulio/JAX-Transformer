@@ -3,10 +3,10 @@ import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
 import seaborn as sns
-from scipy.optimize import curve_fit
+from matplotlib.colors import ListedColormap
 from torch.utils.data import Dataset
 import jax.numpy as jnp
-from scipy.stats import skew, kurtosis, moment, ortho_group
+from scipy.stats import moment, ortho_group
 from tqdm.auto import tqdm
 import os
 import pickle
@@ -183,19 +183,17 @@ class PrimitiveNLP(Dataset):
 def read_embeddings(embedding_path, vocab_size):
     embedding_vectors = []
     with open(embedding_path, 'r', encoding = 'utf-8') as f:
-        next(f)  # Skip the header or first line if any
-        # Use the readlines() method to read all lines into a list
+        next(f)
+        
         lines = f.readlines()
-
-        # Count the number of lines in the list
         num_rows = len(lines)
 
         step = num_rows // vocab_size
         step=1
         for i, line in enumerate(lines):
-            if i >= vocab_size * step:  # Break if enough vectors are read
+            if i >= vocab_size * step:
                 break
-            if i % step == 0:  # Only take every step-th vector
+            if i % step == 0:
                 values = line.split()
                 vector = torch.tensor([float(val) for val in values[1:]])
                 embedding_vectors.append(vector)
@@ -206,10 +204,15 @@ def read_embeddings(embedding_path, vocab_size):
 
 def normalize_embeddings(embeddings):
     norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
-    return embeddings / norms
+    return embeddings
 
-def compute_similarity_matrix(normalized_embeddings):
-    return np.dot(normalized_embeddings, normalized_embeddings.T)
+def compute_similarity_matrix(embeddings):
+    embeddings = np.array(embeddings)
+    similarity = np.dot(embeddings, embeddings.T)
+    min_val = np.min(similarity)
+    max_val = np.max(similarity)
+    
+    return (similarity - min_val) / (max_val - min_val)
 
 
 
@@ -237,8 +240,8 @@ def match_moments(A, n, axis=0, max_iterations=int(1e6), tolerance=1e-6):
         # Calculate moments of the slice of A
         mean_A = np.mean(A_slice)
         var_A = np.var(A_slice)
-        skew_A = moment(A_slice, moment=3) / np.power(var_A, 1.5) if n >= 3 else None
-        kurt_A = moment(A_slice, moment=4) / (var_A ** 2) if n >= 4 else None
+        skew_A = moment(A_slice, moment=3) if n >= 3 else None # / np.power(var_A, 1.5) if n >= 3 else None
+        kurt_A = moment(A_slice, moment=4) if n >= 4 else None # / (var_A ** 2) if n >= 4 else None
         
         # Match first moment (mean) for slice of B
         B_slice = B_slice - np.mean(B_slice) + mean_A
@@ -255,10 +258,8 @@ def match_moments(A, n, axis=0, max_iterations=int(1e6), tolerance=1e-6):
                 prev_B_slice = B_slice.copy()
                 
                 # Compute moments for B_slice
-                mean_B = np.mean(B_slice)
-                var_B = np.var(B_slice)
-                skew_B = moment(B_slice, moment=3) / np.power(var_B, 1.5) if n >= 3 else None
-                kurt_B = moment(B_slice, moment=4) / (var_B ** 2) if n >= 4 else None
+                skew_B = moment(B_slice, moment=3) if n >= 3 else None # / np.power(var_A, 1.5) if n >= 3 else None
+                kurt_B = moment(B_slice, moment=4) if n >= 4 else None # / (var_A ** 2) if n >= 4 else None
                 
                 # Adjust higher moments iteratively
                 if n >= 3 and skew_A is not None and np.abs(skew_A - skew_B) > tolerance:
@@ -283,23 +284,36 @@ def match_moments(A, n, axis=0, max_iterations=int(1e6), tolerance=1e-6):
     
     return B
 
+##########################################################################################
 
+# Set plot parameters
+plt.style.use('science')
+plt.rcParams['axes.labelsize'] = 14
+plt.rcParams['legend.fontsize'] = 14 
+plt.rcParams['axes.titlesize'] = 16
+plt.rcParams['xtick.major.size'] = 10
+plt.rcParams['ytick.major.size'] = 10
+plt.rcParams['xtick.minor.size'] = 5
+plt.rcParams['ytick.minor.size'] = 5
+plt.rcParams['figure.figsize'] = [15, 8]
 
 ##########################################################################################
 
-plt.style.use('science')
-plt.rcParams['figure.figsize'] = [15, 8]
+save_dir = "Empirics/zipf/"
+os.makedirs(save_dir, exist_ok=True)
 
 # Define the name of the embeddings
 emb_names = ['GloVe', 'Random', #'Preserve Mean',
              'Preserve Two Moments', 'Preserve Three Moments',
              'Preserve Four Moments', 'Preserve Covariance',
-             'Preserve Eigenvalue Distribution']
+             'Preserve Singular Values Distribution']
 
 
 # Decide to preserve row or column statistics
 axis = 0
 
+seed = 42
+np.random.seed(seed)
 
 # Generate the embeddings
 all_embeddings = []
@@ -326,19 +340,19 @@ del embeddings
 # del embeddings
 
 # Preserve Mean & Variance
-embeddings = match_moments(all_embeddings[0], 2, axis)
+embeddings = match_moments(all_embeddings[0], 2)
 embeddings = [torch.from_numpy(row) for row in embeddings]
 all_embeddings.append(embeddings)
 del embeddings
 
 # Preserve first three moments
-embeddings = match_moments(all_embeddings[0], 3, axis)
+embeddings = match_moments(all_embeddings[0], 3)
 embeddings = [torch.from_numpy(row) for row in embeddings]
 all_embeddings.append(embeddings)
 del embeddings
 
 # Preserve first four moments
-embeddings = match_moments(all_embeddings[0], 4, axis)
+embeddings = match_moments(all_embeddings[0], 4)
 embeddings = [torch.from_numpy(row) for row in embeddings]
 all_embeddings.append(embeddings)
 del embeddings
@@ -354,16 +368,16 @@ embeddings = [torch.from_numpy(row) for row in embeddings]
 all_embeddings.append(embeddings)
 del embeddings
 
-# Preserve Eigenvalue Distribution
+# Preserve Singular Values Distribution
 if axis == 0:
-    # Preserve eigenvalue distribution of rows
+    # Preserve Singular Values distribution of rows
     U, singular_values, Vt = np.linalg.svd(all_embeddings[0], full_matrices=False)
     random_U = ortho_group.rvs(dim=U.shape[0])[:, :U.shape[1]]  # Random matrix for rows
     random_V = ortho_group.rvs(dim=Vt.shape[1])[:, :Vt.shape[0]]  # Random matrix for columns
     Sigma = np.diag(singular_values)
     embeddings = random_U @ Sigma @ random_V.T  # Reconstruct matrix
 elif axis == 1:
-    # Preserve eigenvalue distribution of columns
+    # Preserve Singular Values distribution of columns
     V, singular_values, Ut = np.linalg.svd(np.array(all_embeddings[0]).T.tolist(), full_matrices=False)
     random_V = ortho_group.rvs(dim=V.shape[0])[:, :V.shape[1]]  # Random matrix for columns
     random_U = ortho_group.rvs(dim=Ut.shape[1])[:, :Ut.shape[0]]  # Random matrix for rows
@@ -375,328 +389,308 @@ embeddings = [torch.from_numpy(row) for row in embeddings]
 all_embeddings.append(embeddings)
 del embeddings
 
-# Initialize lists to store values
+
 all_similarity = []
 all_singular_values = []
 all_covariance = []
-# all_mean = []
 all_variance = []
-all_skewness = []
-all_kurtosis = []
+all_third_moment = []
+all_fourth_moment = []
 
-# # Plot heatmap of the GloVe embeddings
-# plt.figure()
-# plt.title(f'Embeddings for {emb_names[0]}')
-# sns.heatmap(all_embeddings[0], yticklabels=False, cmap='viridis', cbar_kws={'label': 'Magnitude'})
-# plt.xlabel('Dimension')
-# plt.ylabel('Token')
-# plt.xticks(fontsize=7)
-# plt.yticks(fontsize=7)
-# plt.clf()
-# plt.close()
+# Plot heatmap of the GloVe embeddings
+plt.rcParams['xtick.major.size'] = 5  # Major x-tick size
+plt.rcParams['ytick.major.size'] = 5  # Major y-tick size
+plt.rcParams['xtick.minor.size'] = 0  # Minor x-tick size
+plt.rcParams['ytick.minor.size'] = 0  # Minor y-tick size
 
-# # Plot similarity matrix between tokens
-# norm_embs = normalize_embeddings(all_embeddings[0])
-# sim_mtrx = compute_similarity_matrix(norm_embs)
-# all_similarity.append(sim_mtrx)
-# plt.figure()
-# plt.title(f'Normalized similarity matrix for {emb_names[0]}')
-# sns.heatmap(sim_mtrx, yticklabels=False, cmap='viridis', cbar_kws={'label': 'Similarity'})
-# plt.xlabel('Token')
-# plt.ylabel('Token')
-# plt.xticks(fontsize=7)
-# plt.yticks(fontsize=7)
-# plt.clf()
-# plt.close()
+plt.figure()
+plt.title(f'Embeddings for {emb_names[0]}')
+sns.heatmap(all_embeddings[0], cmap='viridis', cbar_kws={'label': 'Magnitude'})
+plt.xlabel('Dimension')
+plt.ylabel('Token')
+plt.savefig(os.path.join(save_dir, 'GloVe_embs.png'), format='png', dpi=200)
+plt.clf()
+plt.close()
 
-# # Compute and plot singular values
-# U, singular_values, Vt = np.linalg.svd(all_embeddings[0], full_matrices=False)
-# all_singular_values.append(singular_values)
-# plt.scatter(np.arange(1, len(singular_values) + 1), singular_values, color='b')
-# plt.title(f'Singular Values for {emb_names[0]}')
-# plt.xlabel('Index')
-# plt.ylabel('Singular Value')
-# plt.grid(True)
-# plt.clf()
-# plt.close()
+# Similarity matrix between tokens
+sim_mtrx = compute_similarity_matrix(all_embeddings[0])
+all_similarity.append(sim_mtrx)
 
-# # Compute and plot covariance
-# cov = np.cov(all_embeddings[0], rowvar=False)
-# all_covariance.append(cov)
-# plt.figure()
-# plt.title(f'Covariance for {emb_names[0]}')
-# sns.heatmap(cov, cmap='viridis', cbar_kws={'label': 'Covariance'})
-# plt.xlabel('Token')
-# plt.ylabel('Token')
-# plt.xticks(fontsize=7)
-# plt.yticks(fontsize=7)
-# plt.clf()
-# plt.close()
+# Compute and plot covariance
+cov = np.cov(all_embeddings[0], rowvar=False)
+all_covariance.append(cov)
+plt.figure()
+plt.title(f'Covariance for {emb_names[0]}')
+sns.heatmap(cov, cmap='viridis', cbar_kws={'label': 'Covariance'})
+plt.xlabel('Token')
+plt.ylabel('Token')
+plt.savefig(os.path.join(save_dir, 'GloVe_cov.png'), format='png', dpi=200)
+plt.clf()
+plt.close()
 
-# # Compute statistical properties (variance, skewness, kurtosis)
-# # mean = np.mean(all_embeddings[0], axis=0)
-# # all_mean.append(mean)
-# # plt.scatter(np.arange(1, embedding_dim + 1), mean, color='b')
-# # plt.title(f'Mean for {emb_names[0]}')
-# # plt.xlabel('Token')
-# # plt.ylabel('Mean')
-# # plt.grid(True)
-# # plt.clf()
-# # plt.close()
+plt.rcdefaults()
+plt.style.use('science')
+plt.rcParams['axes.labelsize'] = 14
+plt.rcParams['legend.fontsize'] = 14
+plt.rcParams['axes.titlesize'] = 16 
+plt.rcParams['figure.figsize'] = [15, 8]
 
-# variance = np.var(all_embeddings[0], axis=axis)
-# all_variance.append(variance)
-# if axis == 0:
-#     plt.scatter(np.arange(1, embedding_dim + 1), variance, color='b')
-# elif axis == 1:
-#     plt.scatter(np.arange(1, vocab_size + 1), variance, color='b')
-# plt.title(f'Variance for {emb_names[0]}')
-# plt.xlabel('Token')
-# plt.ylabel('Variance')
-# plt.grid(True)
-# plt.clf()
-# plt.close()
+# Singular values
+_, singular_values, _ = np.linalg.svd(all_embeddings[0], full_matrices=False)
+all_singular_values.append(singular_values)
 
-# skewness = skew(all_embeddings[0], axis=axis)
-# all_skewness.append(skewness)
-# if axis == 0:
-#     plt.scatter(np.arange(1, embedding_dim + 1), skewness, color='b')
-# elif axis == 1:
-#     plt.scatter(np.arange(1, vocab_size + 1), skewness, color='b')
-# plt.title(f'Skewness for {emb_names[0]}')
-# plt.xlabel('Token')
-# plt.ylabel('Skewness')
-# plt.grid(True)
-# plt.clf()
-# plt.close()
+variance = np.var(all_embeddings[0], axis=axis)
+all_variance.append(variance)
 
-# kurt = kurtosis(all_embeddings[0], axis=axis)
-# all_kurtosis.append(kurt)
-# if axis == 0:
-#     plt.scatter(np.arange(1, embedding_dim + 1), kurt, color='b')
-# elif axis == 1:
-#     plt.scatter(np.arange(1, vocab_size + 1), kurt, color='b')
-# plt.title(f'Kurtosis for {emb_names[0]}')
-# plt.xlabel('Token')
-# plt.ylabel('Kurtosis')
-# plt.grid(True)
-# plt.clf()
-# plt.close()
+moments = []
+embs = np.array(all_embeddings[0])
+for j in range(embs.shape[1]):
+    mean_emb = np.mean(embs[:, j])
+    moment_emb = np.mean((embs[:, j] - mean_emb) ** 3)
+    moments.append(moment_emb)
 
-# # Precompute the norms of the GloVe (first embedding) statistics
-# glove_embedding_norm = np.linalg.norm(all_embeddings[0])
-# glove_singular_norm = np.linalg.norm(all_singular_values[0])
-# glove_covariance_norm = np.linalg.norm(all_covariance[0])
-# #glove_mean_norm = np.linalg.norm(all_mean[0])
-# glove_variance_norm = np.linalg.norm(all_variance[0])
-# glove_skewness_norm = np.linalg.norm(all_skewness[0])
-# glove_kurtosis_norm = np.linalg.norm(all_kurtosis[0])
+all_third_moment.append(moments)
 
-# for idx, emb_name in enumerate(emb_names[1:], start=1):
- 
-#     # Plot heatmap of the GloVe embeddings
-#     plt.figure()
-#     plt.title(f'Embeddings for {emb_name}')
-#     sns.heatmap(all_embeddings[idx], yticklabels=False, cmap='viridis', cbar_kws={'label': 'Magnitude'})
-#     plt.xlabel('Dimension')
-#     plt.ylabel('Token')
-#     plt.xticks(fontsize=7)
-#     plt.yticks(fontsize=7)
-#     plt.clf()
-#     plt.close()
+moments = []
+for j in range(embs.shape[1]):
+    mean_emb = np.mean(embs[:, j])
+    moment_emb = np.mean((embs[:, j] - mean_emb) ** 4)
+    moments.append(moment_emb)
 
-#     # Plot similarity matrix between tokens
-#     norm_embs = normalize_embeddings(all_embeddings[idx])
-#     sim_mtrx = compute_similarity_matrix(norm_embs)
-#     all_similarity.append(sim_mtrx)
-#     plt.figure()
-#     plt.title(f'Normalized similarity matrix for {emb_name}')
-#     sns.heatmap(sim_mtrx, yticklabels=False, cmap='viridis', cbar_kws={'label': 'Similarity'})
-#     plt.xlabel('Token')
-#     plt.ylabel('Token')
-#     plt.xticks(fontsize=7)
-#     plt.yticks(fontsize=7)
-#     plt.clf()
-#     plt.close()
+all_fourth_moment.append(moments)
 
-#     # Compute and plot singular values
-#     U, singular_values, Vt = np.linalg.svd(all_embeddings[idx], full_matrices=False)
-#     all_singular_values.append(singular_values)
-#     plt.scatter(np.arange(1, len(singular_values) + 1), singular_values, color='b')
-#     plt.title(f'Singular Values for {emb_name}')
-#     plt.xlabel('Index')
-#     plt.ylabel('Singular Value')
-#     plt.grid(True)
-#     plt.clf()
-#     plt.close()
+# Precompute the norms of the GloVe statistics
+glove_embedding_norm = np.linalg.norm(all_embeddings[0])
+glove_covariance_norm = np.linalg.norm(all_covariance[0])
 
-#     # Compute and plot covariance
-#     cov = np.cov(all_embeddings[idx], rowvar=False)
-#     all_covariance.append(cov)
-#     plt.figure()
-#     plt.title(f'Covariance for {emb_name}')
-#     sns.heatmap(cov, cmap='viridis', cbar_kws={'label': 'Covariance'})
-#     plt.xlabel('Token')
-#     plt.ylabel('Token')
-#     plt.xticks(fontsize=7)
-#     plt.yticks(fontsize=7)
-#     plt.clf()
-#     plt.close()
+for idx, emb_name in enumerate(emb_names[1:], start=1):
 
-#     # Compute statistical properties (variance, skewness, kurtosis)
-#     # mean = np.mean(all_embeddings[idx], axis=0)
-#     # all_mean.append(mean)
-#     # plt.scatter(np.arange(1, embedding_dim + 1), mean, color='b')
-#     # plt.title(f'Mean for {emb_name}')
-#     # plt.xlabel('Token')
-#     # plt.ylabel('Mean')
-#     # plt.grid(True)
-#     # plt.clf()
-#     # plt.close()
+    sim_mtrx = compute_similarity_matrix(all_embeddings[0])
+    all_similarity.append(sim_mtrx)
 
-#     variance = np.var(all_embeddings[idx], axis=axis)
-#     all_variance.append(variance)
-#     if axis == 0:
-#         plt.scatter(np.arange(1, embedding_dim + 1), variance, color='b')
-#     elif axis == 1:
-#         plt.scatter(np.arange(1, vocab_size + 1), variance, color='b')
-#     plt.title(f'Variance for {emb_name}')
-#     plt.xlabel('Token')
-#     plt.ylabel('Variance')
-#     plt.grid(True)
-#     plt.clf()
-#     plt.close()
+    cov = np.cov(all_embeddings[idx], rowvar=False)
+    all_covariance.append(cov)
 
-#     skewness = skew(all_embeddings[idx], axis=axis)
-#     all_skewness.append(skewness)
-#     if axis == 0:
-#         plt.scatter(np.arange(1, embedding_dim + 1), skewness, color='b')
-#     elif axis == 1:
-#         plt.scatter(np.arange(1, vocab_size + 1), skewness, color='b')
-#     plt.title(f'Skewness for {emb_name}')
-#     plt.xlabel('Token')
-#     plt.ylabel('Skewness')
-#     plt.grid(True)
-#     plt.clf()
-#     plt.close()
+    _, singular_values, _ = np.linalg.svd(all_embeddings[idx], full_matrices=False)
+    all_singular_values.append(singular_values)
 
-#     kurt = kurtosis(all_embeddings[idx], axis=axis)
-#     all_kurtosis.append(kurt)
-#     if axis == 0:
-#         plt.scatter(np.arange(1, embedding_dim + 1), kurt, color='b')
-#     elif axis == 1:
-#         plt.scatter(np.arange(1, vocab_size + 1), kurt, color='b')
-#     plt.title(f'Kurtosis for {emb_name}')
-#     plt.xlabel('Token')
-#     plt.ylabel('Kurtosis')
-#     plt.grid(True)
-#     plt.clf()
-#     plt.close()
+    variance = np.var(all_embeddings[idx], axis=axis)
+    all_variance.append(variance)
+
+
+    moments = []
+    embs = np.array(all_embeddings[idx])
+    for j in range(embs.shape[1]):
+        mean_emb = np.mean(embs[:, j])
+        moment_emb = np.mean((embs[:, j] - mean_emb) ** 3)
+        moments.append(moment_emb)
+
+    all_third_moment.append(moments)
+
+    moments = []
+    for j in range(embs.shape[1]):
+        mean_emb = np.mean(embs[:, j])
+        moment_emb = np.mean((embs[:, j] - mean_emb) ** 4)
+        moments.append(moment_emb)
+
+    all_fourth_moment.append(moments)
 
     
-#     # Compute distances for each metric with respect to GloVe
-#     dist_embedding = np.abs(glove_embedding_norm - np.linalg.norm(all_embeddings[idx]))
-#     dist_singular = np.abs(glove_singular_norm - np.linalg.norm(all_singular_values[idx]))
-#     dist_covariance = np.abs(glove_covariance_norm - np.linalg.norm(all_covariance[idx]))
-#     # dist_mean = np.abs(glove_mean_norm - np.linalg.norm(all_mean[idx]))
-#     dist_variance = np.abs(glove_variance_norm - np.linalg.norm(all_variance[idx]))
-#     dist_skewness = np.abs(glove_skewness_norm - np.linalg.norm(all_skewness[idx]))
-#     dist_kurtosis = np.abs(glove_kurtosis_norm - np.linalg.norm(all_kurtosis[idx]))
+    # Compute distances for each metric with respect to GloVe
+    dist_embedding = np.abs(glove_embedding_norm - np.linalg.norm(all_embeddings[idx]))
+    dist_singular = np.linalg.norm(all_singular_values[0] - all_singular_values[idx])
+    dist_covariance = np.abs(glove_covariance_norm - np.linalg.norm(all_covariance[idx]))
+    dist_variance = np.linalg.norm(np.array(all_variance[0]) - np.array(all_variance[idx]))
+    dist_third = np.linalg.norm(np.array(all_third_moment[0]) - np.array(all_third_moment[idx]))
+    dist_fourth = np.linalg.norm(np.array(all_fourth_moment[0]) - np.array(all_fourth_moment[idx]))
 
 
-#     # Print the results with formatted output
-#     print(f"--- Distances between GloVe and {emb_name} ---")
-#     print(f"Embedding Distance: {dist_embedding:.4f}")
-#     print(f"Singular Value Distance: {dist_singular:.4f}")
-#     print(f"Covariance Distance: {dist_covariance:.4f}")
-#     # print(f"Mean Distance: {dist_mean:.4f}")
-#     print(f"Variance Distance: {dist_variance:.4f}")
-#     print(f"Skewness Distance: {dist_skewness:.4f}")
-#     print(f"Kurtosis Distance: {dist_kurtosis:.4f}")
-#     print("\n")
+    print(f"--- Distances between GloVe and {emb_name} ---")
+    print(f"Embedding Distance: {dist_embedding:.6f}")
+    print(f"Singular Value Distance: {dist_singular:.6f}")
+    print(f"Covariance Distance: {dist_covariance:.6f}")
+    # print(f"Mean Distance: {dist_mean:.6f}")
+    print(f"Variance Distance: {dist_variance:.6f}")
+    print(f"Third Moment Distance: {dist_third:.6f}")
+    print(f"Fourth Moment Distance: {dist_fourth:.6f}")
+    print("\n")
+
+plt.rcParams['xtick.major.size'] = 5 
+plt.rcParams['ytick.major.size'] = 5  
+plt.rcParams['xtick.minor.size'] = 0  
+plt.rcParams['ytick.minor.size'] = 0    
+plt.rcParams['axes.labelsize'] = 10 
+plt.rcParams['axes.titlesize'] = 12 
+plt.rcParams['xtick.labelsize'] = 8 
+plt.rcParams['ytick.labelsize'] = 8
+
+fig, axs = plt.subplots(2, 3, figsize=(12, 8))
+axs = axs.flatten()
+
+for idx in range(1, min(len(all_embeddings), 7)):
+
+    sns.heatmap(all_embeddings[idx], ax=axs[idx - 1], cmap='viridis', cbar_kws={'label': 'Magnitude'})
+    axs[idx - 1].set_title(f'{emb_names[idx]}')
+    axs[idx - 1].set_xlabel('Dimension')
+    axs[idx - 1].set_ylabel('Token')
+
+for i in range(len(all_embeddings), 6):
+    axs[i].set_visible(False)
+
+fig.suptitle('Embeddings', fontsize=16)
+plt.tight_layout()
+plt.savefig(os.path.join(save_dir, 'embedding_comparison.png'), format='png', dpi=200)
+plt.clf()
+plt.close()
+
+fig, axs = plt.subplots(2, 3, figsize=(12, 8))
+axs = axs.flatten()
+
+for idx in range(1, len(all_covariance)):
+    # Plot heatmap for covariance
+    sns.heatmap(all_covariance[idx], ax=axs[idx - 1], cmap='viridis', cbar_kws={'label': 'Covariance'})
+    axs[idx - 1].set_title(f'{emb_names[idx]}')
+    axs[idx - 1].set_xlabel('Token')
+    axs[idx - 1].set_ylabel('Token')
+
+for i in range(len(all_covariance), 6):
+    axs[i].set_visible(False)
+
+fig.suptitle('Covariance', fontsize=16)
+plt.tight_layout()
+plt.savefig(os.path.join(save_dir, 'covariance_comparison.png'), format='png', dpi=200)
+plt.clf()
+plt.close()
+
+plt.rcdefaults()
+plt.style.use('science')
+plt.rcParams['axes.labelsize'] = 10
+plt.rcParams['legend.fontsize'] = 10 
+plt.rcParams['axes.titlesize'] = 12
+plt.rcParams['xtick.major.size'] = 8
+plt.rcParams['ytick.major.size'] = 8
+plt.rcParams['xtick.minor.size'] = 3
+plt.rcParams['ytick.minor.size'] = 3
+plt.rcParams['figure.figsize'] = [15, 8]
+
+
+# Plot Singular Values
+base_line_width = 1
+fig, axs = plt.subplots(2, 3, figsize=(12, 8))
+axs = axs.flatten()
+colors = ListedColormap([
+    '#E41A1C',  # Red
+    '#377EB8',  # Blue
+    '#4DAF4A',  # Green
+    '#FF7F00',  # Orange
+    '#984EA3',  # Purple
+    '#B3B6E0',   # Light Purple
+    '#66C2A5'   # Light Blue
+])
 
 
 
+for idx in range(1, len(all_singular_values)):
+
+    axs[idx - 1].plot(np.arange(1, len(all_singular_values[0]) + 1), all_singular_values[0],
+                      color=colors(0), linewidth=base_line_width, marker='o', label=f'{emb_names[0]}')
+
+    
+    axs[idx - 1].plot(np.arange(1, len(all_singular_values[idx]) + 1), all_singular_values[idx],
+                      color=colors(idx / len(all_singular_values)), marker='p',
+                      linewidth=base_line_width, label=f'{emb_names[idx]}')
+
+    axs[idx - 1].set_title(f'{emb_names[0]} VS {emb_names[idx]}')
+    axs[idx - 1].set_xlabel('Index')
+    #axs[idx - 1].set_yscale('log')
+    axs[idx - 1].set_ylabel('Singular Value')
+    axs[idx - 1].legend()
 
 
-# base_line_width = 3.5  # Base line width for the largest line
+for i in range(len(all_singular_values), 6):
+    axs[i].set_visible(False)
 
-# # Plot Singular Values
-colors = plt.colormaps.get_cmap('Set2')
-# for idx, singular_values in enumerate(all_singular_values):
-#     line_width = base_line_width + (base_line_width * (1 - idx * 1.75 / len(all_singular_values)))  # Decreasing line width
-#     plt.plot(np.arange(1, len(singular_values) + 1), singular_values, 
-#              color=colors(idx / len(all_singular_values)), 
-#              label=f'{emb_names[idx]}', linewidth=line_width)
+plt.tight_layout()
+plt.savefig(os.path.join(save_dir, 'SV_comparison.png'), format='png', dpi=200)
+plt.clf()
+plt.close()
 
-# plt.title('Scatter Plot of Singular Values')
-# plt.xlabel('Index')
-# plt.yscale('log')
-# plt.ylabel('Singular Value')
-# plt.legend()
-# # plt.show()
+# Plot Variance
+fig, axs = plt.subplots(2, 3, figsize=(12, 8))
+axs = axs.flatten()
 
-# # # Plot Mean
-# # for idx, mean in enumerate(all_mean):
-# #     line_width = base_line_width + (base_line_width * (1 - idx * 1.75 / len(all_mean)))
-# #     plt.plot(np.arange(1, len(mean) + 1), mean, 
-# #              color=colors(idx / len(all_mean)), 
-# #              label=f'{emb_names[idx]}', linewidth=line_width)
-# 
-# # plt.title('Scatter Plot of Mean')
-# # plt.xlabel('Index')
-# # plt.yscale('symlog')
-# # plt.ylabel('Mean')
-# # plt.legend()
-# # # plt.show()
+for idx in range(1, len(all_variance)):
 
-# # Plot Variance
-# for idx, var in enumerate(all_variance):
-#     line_width = base_line_width + (base_line_width * (1 - idx * 1.75 / len(all_variance)))
-#     plt.plot(np.arange(1, len(var) + 1), var, 
-#              color=colors(idx / len(all_variance)), 
-#              label=f'{emb_names[idx]}', linewidth=line_width)
+    axs[idx - 1].plot(np.arange(1, len(all_variance[0]) + 1), all_variance[0],
+                      color=colors(0), linewidth=base_line_width, marker='o', label=f'{emb_names[0]}')
 
-# plt.title('Scatter Plot of Variance')
-# plt.xlabel('Index')
-# plt.yscale('log')
-# plt.ylabel('Variance')
-# plt.legend()
-# # plt.show()
-# plt.clf()
-# plt.close()
+    axs[idx - 1].plot(np.arange(1, len(all_variance[idx]) + 1), all_variance[idx],
+                      color=colors(idx / len(all_variance)), linewidth=base_line_width, marker='p', label=f'{emb_names[idx]}')
 
-# # Plot Skewness
-# for idx, skews in enumerate(all_skewness):
-#     line_width = base_line_width + (base_line_width * (1 - idx * 1.75 / len(all_skewness)))
-#     plt.plot(np.arange(1, len(skews) + 1), skews, 
-#              color=colors(idx / len(all_skewness)), 
-#              label=f'{emb_names[idx]}', linewidth=line_width)
 
-# plt.title('Scatter Plot of Skewness')
-# plt.xlabel('Index')
-# plt.yscale('symlog')
-# plt.ylabel('Skewness')
-# plt.legend()
-# # plt.show()
-# plt.clf()
-# plt.close()
+    axs[idx - 1].set_title(f'{emb_names[0]} VS {emb_names[idx]}')
+    axs[idx - 1].set_xlabel('Index')
+    axs[idx - 1].set_ylabel('Variance')
+    axs[idx - 1].legend()
 
-# # Plot Kurtosis
-# for idx, kurts in enumerate(all_kurtosis):
-#     line_width = base_line_width + (base_line_width * (1 - idx * 1.75 / len(all_kurtosis)))
-#     plt.plot(np.arange(1, len(kurts) + 1), kurts, 
-#              color=colors(idx / len(all_kurtosis)), 
-#              label=f'{emb_names[idx]}', linewidth=line_width)
+for i in range(len(all_variance), 6):
+    axs[i].set_visible(False)
 
-# plt.title('Scatter Plot of Kurtosis')
-# plt.xlabel('Index')
-# plt.yscale('symlog')
-# plt.ylabel('Kurtosis')
-# plt.legend()
-# # plt.show()
-# plt.clf()
-# plt.close()
+plt.tight_layout()
+plt.savefig(os.path.join(save_dir, 'variance_comparison.png'), format='png', dpi=200)
+plt.clf()
+plt.close()
+
+
+# Plot Third Moment
+fig, axs = plt.subplots(2, 3, figsize=(12, 8))
+axs = axs.flatten()
+
+for idx in range(1, len(all_third_moment)):
+
+    axs[idx - 1].plot(np.arange(1, len(all_third_moment[0]) + 1), all_third_moment[0],
+                      color=colors(0), linewidth=base_line_width, marker='o', label=f'{emb_names[0]}')
+
+    axs[idx - 1].plot(np.arange(1, len(all_third_moment[idx]) + 1), all_third_moment[idx],
+                      color=colors(idx / len(all_third_moment)), linewidth=base_line_width, marker='p', label=f'{emb_names[idx]}')
+
+    axs[idx - 1].set_title(f'{emb_names[0]} VS {emb_names[idx]}')
+    axs[idx - 1].set_xlabel('Index')
+    axs[idx - 1].set_ylabel('Third Moment')
+    axs[idx - 1].legend()
+
+for i in range(len(all_third_moment), 6):
+    axs[i].set_visible(False)
+
+plt.tight_layout()
+plt.savefig(os.path.join(save_dir, 'third_moment_comparison.png'), format='png', dpi=200)
+plt.clf()
+plt.close()
+
+# Plot Fourth Moment
+fig, axs = plt.subplots(2, 3, figsize=(12, 8))
+axs = axs.flatten()
+
+for idx in range(1, len(all_fourth_moment)):
+
+    axs[idx - 1].plot(np.arange(1, len(all_fourth_moment[0]) + 1), all_fourth_moment[0],
+                      color=colors(0), linewidth=base_line_width, marker='o', label=f'{emb_names[0]}')
+
+    axs[idx - 1].plot(np.arange(1, len(all_fourth_moment[idx]) + 1), all_fourth_moment[idx],
+                      color=colors(idx / len(all_fourth_moment)), linewidth=base_line_width, marker='p', label=f'{emb_names[idx]}')
+
+    axs[idx - 1].set_title(f'{emb_names[0]} VS {emb_names[idx]}')
+    axs[idx - 1].set_xlabel('Index')
+    axs[idx - 1].set_ylabel('Fourth Moment')
+    axs[idx - 1].legend()
+
+for i in range(len(all_fourth_moment), 6):
+    axs[i].set_visible(False)
+
+plt.tight_layout()
+plt.savefig(os.path.join(save_dir, 'fourth_moment_comparison.png'), format='png', dpi=200)
+plt.clf()
+plt.close()
 
 
 # Hyperparameters
@@ -705,14 +699,13 @@ sequence_length = 10
 context_window = 10
 # vocab_size = 5995
 vocab = list(range(vocab_size))
-seed = 42
 distr_param = 1.1
-temperature = 3
+temperature = 2
 
-# Generate a unique filename based on hyperparameters
+
 filename = f"all_sequences_num_samples{num_samples}_seq_len{sequence_length}_context_win{context_window}_vocab_size{vocab_size}_distr_param{distr_param}_temperature{temperature}.pkl"
+print(f"{filename}\n")
 
-# Check if the file already exists
 if os.path.exists(filename):
     with open(filename, 'rb') as f:
         all_sequences = pickle.load(f)
@@ -720,18 +713,28 @@ if os.path.exists(filename):
 else:
     all_sequences = []
     
-    # Generate sequences if the file does not exist
     for idx in range(len(emb_names)):
         dataset = PrimitiveNLP(num_samples, sequence_length, context_window, vocab, all_embeddings[idx], seed, distr_param)
         all_sequences.append(dataset.X)
 
-    # Save the sequences to a file
     with open(filename, 'wb') as f:
         pickle.dump(all_sequences, f)
     print(f"Generated and saved sequences to {filename}.")
 
 
-# Define your different line styles
+plt.rcdefaults()
+plt.style.use('science')
+plt.rcParams['axes.labelsize'] = 10  
+plt.rcParams['legend.fontsize'] = 10 
+plt.rcParams['axes.titlesize'] = 12 
+plt.rcParams['xtick.major.size'] = 8
+plt.rcParams['ytick.major.size'] = 8
+plt.rcParams['xtick.minor.size'] = 3
+plt.rcParams['ytick.minor.size'] = 3
+plt.rcParams['figure.figsize'] = [15, 8]
+colors = plt.cm.Set2
+
+
 line_styles = {
     0: '-',     # Solid line for idx = 0
     1: '--',    # Dashed line for idx = 1
@@ -742,31 +745,23 @@ line_styles = {
     6: (0, (5, 5, 1, 5)),  # Custom dash pattern for idx = 6
 }
 
-plt.figure(figsize=(12, 8))
 
-
-# Iterate through all sublists in all_sequences
 for idx, sequences in enumerate(all_sequences):
     distr = []
 
     unique_tokens, counts = np.unique(sequences, return_counts=True)
 
-    # Compute the frequencies of each token
-    num_tokens = num_samples * sequence_length  # Total number of tokens in the current batch of sequences
-    distr = np.array(counts) / num_tokens  # Normalize by total number of tokens
+    num_tokens = num_samples * sequence_length
+    distr = np.array(counts) / num_tokens
 
-    # Sort the frequencies in descending order
     distr[::-1].sort()
 
     diff = vocab_size - len(distr)
     if diff != 0 :
         distr = np.append(distr, np.zeros(diff))
 
+    style = line_styles.get(idx, '-')
 
-    # Determine the appropriate line style for the current index
-    style = line_styles.get(idx, '-')  # Default to solid line if idx not in dictionary
-    
-    # Plot the distribution with explicit linestyle and color keyword arguments
     plt.plot(range(1, len(distr) + 1), distr, color=colors(idx / len(all_sequences)), 
              linestyle=style, label=f'{emb_names[idx]}', linewidth=2)
     
@@ -777,11 +772,12 @@ freqs = np.sort(freqs)[::-1]
 
 plt.plot(range(1, len(distr) + 1), freqs, '-*', markersize=4, label='Tiny Stories', color='darkred')
 
-# Plot formatting
-plt.xlabel('Degree', fontsize=14)
+plt.xlabel('Rank', fontsize=14)
 plt.ylabel('Frequency', fontsize=14)
 plt.xscale('log')
 plt.yscale('log')
 plt.legend(fontsize=14)
-plt.title('Distribution of Tokens Across Sequences', fontsize=16)
-plt.show()
+plt.title('Token Frequency Distribution', fontsize=16)
+plt.savefig(os.path.join(save_dir, 'embs_comparison.png'), format='png', dpi=200)
+plt.clf()
+plt.close()
