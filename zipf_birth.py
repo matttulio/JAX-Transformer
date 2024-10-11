@@ -477,7 +477,6 @@ for idx, emb_name in enumerate(emb_names[1:], start=1):
     variance = np.var(all_embeddings[idx], axis=axis)
     all_variance.append(variance)
 
-
     moments = []
     embs = np.array(all_embeddings[idx])
     for j in range(embs.shape[1]):
